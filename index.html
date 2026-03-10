@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAPA Photo Search | ค้นหารูปภาพกิจกรรม</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        :root { 
+            --primary: #1a7940; 
+            --primary-hover: #145a30;
+            --bg: #f8fafc; 
+            --text: #333333; 
+            --card: #ffffff; 
+            --border: #e2e8f0;
+        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--text); line-height: 1.6; }
+        
+        .navbar { background: var(--card); padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .logo { font-size: 22px; font-weight: 800; color: var(--primary); letter-spacing: 1px; }
+        .nav-btn { background: none; border: none; font-size: 15px; color: #666; cursor: pointer; font-weight: 600; padding: 8px 15px; border-radius: 6px; transition: 0.2s; }
+        .nav-btn:hover { background: #f1f5f9; color: var(--primary); }
+
+        .container { max-width: 900px; margin: 40px auto; padding: 0 20px; }
+        .card { background: var(--card); padding: 35px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid var(--border); margin-bottom: 25px; }
+        
+        h2 { color: var(--text); font-weight: 700; border-bottom: 2px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
+        
+        .btn { background: var(--primary); color: white; border: none; padding: 14px 25px; font-size: 16px; font-weight: 700; border-radius: 8px; cursor: pointer; width: 100%; transition: 0.2s; margin-top: 15px; }
+        .btn:hover { background: var(--primary-hover); }
+        .btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+        .upload-box { border: 2px dashed #cbd5e1; padding: 40px 20px; text-align: center; border-radius: 8px; cursor: pointer; background: #f8fafc; margin-bottom: 20px; display: block; transition: 0.2s; }
+        .upload-box:hover { border-color: var(--primary); background: #f0fdf4; }
+        input[type="file"] { display: none; }
+        
+        .status-box { padding: 15px; border-radius: 8px; font-weight: 600; text-align: center; margin-bottom: 20px; }
+        .status-info { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+        .status-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .status-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+        .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 25px; }
+        .gallery img { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 2px solid transparent; }
+        .gallery img:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
+        
+        .hidden { display: none !important; }
+        .footer { text-align: center; padding: 25px; color: #64748b; font-size: 14px; margin-top: 40px; border-top: 1px solid var(--border); }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">SAPA PHOTO</div>
+        <button class="nav-btn" onclick="toggleAdmin()">ระบบจัดการฐานข้อมูล</button>
+    </nav>
+
+    <div class="container">
+        <div id="statusMessage" class="status-box status-info">กำลังเชื่อมต่อฐานข้อมูล Firebase และโหลดระบบ AI...</div>
+
+        <div id="searchSection" class="card">
+            <h2>ค้นหารูปภาพของคุณ</h2>
+            
+            <label class="upload-box" id="selfieLabel">
+                <p style="font-weight: 600; color: #475569; font-size: 16px;">คลิกเพื่ออัปโหลดรูปใบหน้าของคุณ (หน้าตรง ชัดเจน)</p>
+                <input type="file" id="selfieUpload" accept="image/*" disabled>
+            </label>
+            
+            <div style="text-align: center;">
+                <img id="selfiePreview" class="hidden" style="max-height: 150px; border-radius: 8px; margin-bottom: 15px; border: 3px solid var(--primary);">
+            </div>
+
+            <button id="btnSearch" class="btn hidden" onclick="searchImages()">เริ่มค้นหารูปภาพ</button>
+
+            <div id="resultContainer" class="hidden" style="margin-top: 30px;">
+                <h3 style="border-bottom: 1px solid var(--border); padding-bottom: 10px; color: var(--primary);">
+                    พบรูปของคุณจำนวน <span id="matchCount">0</span> รูป
+                </h3>
+                <p style="font-size: 13px; color: #94a3b8; margin-top: 8px;">*ระบบดึงภาพจากโฟลเดอร์ ./photos/ บนเซิร์ฟเวอร์</p>
+                <div id="resultGallery" class="gallery"></div>
+            </div>
+        </div>
+
+        <div id="adminSection" class="card hidden">
+            <h2 style="color: #b91c1c;">ระบบอัปโหลดสำหรับช่างภาพ</h2>
+            <p style="color: #64748b; margin-bottom: 20px; font-size: 15px;">
+                เลือกรูปภาพกิจกรรมทั้งหมด ระบบจะทำการวิเคราะห์ใบหน้าและบันทึกข้อมูลลง Firebase อัตโนมัติ
+            </p>
+            
+            <label class="upload-box">
+                <p style="font-weight: 600; color: #475569;">คลิกเพื่อเลือกรวมรูปภาพทั้งหมด</p>
+                <input type="file" id="adminPhotosUpload" accept="image/*" multiple>
+            </label>
+
+            <div id="adminProgress" class="status-box status-info hidden">เตรียมพร้อมประมวลผล...</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Student Council, Bangsaphan Wittaya School | System developed by Mr. Athiwat Timthong
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. ตั้งค่า Firebase Configuration
+        // นำค่า Config จาก Firebase Console มาวางทับส่วนนี้
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "ใส่_API_KEY_ของคุณที่นี่",
+            authDomain: "ใส่_AUTH_DOMAIN_ของคุณที่นี่",
+            projectId: "ใส่_PROJECT_ID_ของคุณที่นี่",
+            storageBucket: "ใส่_STORAGE_BUCKET_ของคุณที่นี่",
+            messagingSenderId: "ใส่_SENDER_ID_ของคุณที่นี่",
+            appId: "ใส่_APP_ID_ของคุณที่นี่"
+        };
+
+        // เริ่มต้นการทำงานของ Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+
+        // ==========================================
+        // 2. ตัวแปรระบบ
+        // ==========================================
+        const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+        const PHOTOS_DIR = './photos/'; 
+        let faceDatabase = []; 
+        let myFaceDescriptor = null;
+
+        function updateStatus(msg, type = 'info') {
+            const el = document.getElementById('statusMessage');
+            el.className = `status-box status-${type}`;
+            el.innerText = msg;
+        }
+
+        function toggleAdmin() {
+            const password = prompt("กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบการจัดการ:");
+            if (password === "gateadmin123") {
+                document.getElementById('adminSection').classList.toggle('hidden');
+                document.getElementById('searchSection').classList.add('hidden');
+            } else if (password !== null) {
+                alert("รหัสผ่านไม่ถูกต้อง");
+            }
+        }
+
+        // ==========================================
+        // 3. เริ่มต้นระบบ (โหลด AI และดึงข้อมูล)
+        // ==========================================
+        async function initSystem() {
+            try {
+                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                
+                updateStatus('ระบบ AI พร้อมใช้งาน กำลังดึงข้อมูลจากฐานข้อมูล...', 'info');
+
+                // ดึงข้อมูลจาก Firebase Collection ชื่อ 'face_data'
+                const snapshot = await db.collection('face_data').get();
+                faceDatabase = [];
+                
+                snapshot.forEach(doc => {
+                    faceDatabase.push(doc.data());
+                });
+
+                updateStatus(`ระบบพร้อมใช้งาน โหลดข้อมูลเสร็จสิ้น (${faceDatabase.length} รูปในระบบ)`, 'success');
+                document.getElementById('selfieUpload').disabled = false;
+            } catch (err) {
+                console.error(err);
+                updateStatus('ไม่สามารถเชื่อมต่อระบบได้ กรุณาตรวจสอบการตั้งค่า Firebase หรืออินเทอร์เน็ต', 'error');
+            }
+        }
+
+        // ==========================================
+        // 4. ระบบจัดการของช่างภาพ (เพิ่มข้อมูลลง Firebase)
+        // ==========================================
+        document.getElementById('adminPhotosUpload').addEventListener('change', async (e) => {
+            const files = e.target.files;
+            if (files.length === 0) return;
+            
+            const progress = document.getElementById('adminProgress');
+            progress.classList.remove('hidden');
+            progress.className = 'status-box status-info';
+            
+            let successCount = 0;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                progress.innerText = `กำลังสกัดใบหน้าและบันทึกรูปที่ ${i + 1} / ${files.length} (${file.name})`;
+                
+                try {
+                    const img = await faceapi.bufferToImage(file);
+                    const detections = await faceapi.detectAllFaces(img).withFaceLandmarks().withFaceDescriptors();
+                    
+                    if (detections.length > 0) {
+                        const descriptorsArray = detections.map(d => Array.from(d.descriptor));
+                        
+                        // บันทึกข้อมูลลง Firebase
+                        await db.collection('face_data').doc(file.name).set({
+                            filename: file.name,
+                            faces: descriptorsArray
+                        });
+                        successCount++;
+                    }
+                } catch (err) {
+                    console.error("เกิดข้อผิดพลาดกับไฟล์: ", file.name, err);
+                }
+            }
+
+            progress.className = 'status-box status-success';
+            progress.innerText = `ประมวลผลเสร็จสมบูรณ์ บันทึกข้อมูลสำเร็จ ${successCount} รูป รีเฟรชหน้าเว็บเพื่อดึงข้อมูลล่าสุด`;
+        });
+
+        // ==========================================
+        // 5. ระบบค้นหารูปภาพ (ฝั่งผู้ใช้งาน)
+        // ==========================================
+        document.getElementById('selfieUpload').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            updateStatus('กำลังสแกนวิเคราะห์ใบหน้าของคุณ...', 'info');
+            document.getElementById('resultContainer').classList.add('hidden');
+            document.getElementById('btnSearch').classList.add('hidden');
+
+            const preview = document.getElementById('selfiePreview');
+            preview.src = URL.createObjectURL(file);
+            preview.classList.remove('hidden');
+
+            try {
+                const img = await faceapi.bufferToImage(file);
+                const detection = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+
+                if (!detection) {
+                    updateStatus('ไม่พบใบหน้าในรูปภาพ กรุณาถ่ายใหม่ให้เห็นหน้าตรงชัดเจน', 'error');
+                    myFaceDescriptor = null;
+                    return;
+                }
+
+                myFaceDescriptor = detection.descriptor;
+                updateStatus('วิเคราะห์ใบหน้าสำเร็จ พร้อมทำการค้นหา', 'success');
+                document.getElementById('btnSearch').classList.remove('hidden');
+            } catch (err) {
+                updateStatus('เกิดข้อผิดพลาดในการอ่านรูปภาพ', 'error');
+            }
+        });
+
+        function searchImages() {
+            if (!myFaceDescriptor || faceDatabase.length === 0) return;
+            
+            const gallery = document.getElementById('resultGallery');
+            gallery.innerHTML = '';
+            document.getElementById('resultContainer').classList.remove('hidden');
+            
+            document.getElementById('btnSearch').disabled = true;
+            document.getElementById('btnSearch').innerText = 'กำลังค้นหา...';
+
+            let matchCount = 0;
+            const labeledDesc = new faceapi.LabeledFaceDescriptors('Target', [myFaceDescriptor]);
+            const matcher = new faceapi.FaceMatcher([labeledDesc], 0.55);
+
+            // ค้นหาจากข้อมูลที่ดึงมาจาก Firebase
+            faceDatabase.forEach(photoData => {
+                let isMatch = false;
+                
+                for (let faceArray of photoData.faces) {
+                    const float32Face = new Float32Array(faceArray); 
+                    const match = matcher.findBestMatch(float32Face);
+                    
+                    if (match.label === 'Target') {
+                        isMatch = true;
+                        break;
+                    }
+                }
+
+                if (isMatch) {
+                    matchCount++;
+                    const imgNode = document.createElement('img');
+                    
+                    imgNode.src = PHOTOS_DIR + photoData.filename;
+                    imgNode.onclick = () => window.open(imgNode.src, '_blank');
+                    
+                    imgNode.onerror = function() {
+                        this.onerror = null;
+                        this.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22200%22%20height%3D%22200%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22200%22%20height%3D%22200%22%20fill%3D%22%23e2e8f0%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2214%22%20fill%3D%22%2364748b%22%3EImage%20Not%20Found%3C%2Ftext%3E%3C%2Fsvg%3E';
+                    };
+                    
+                    gallery.appendChild(imgNode);
+                }
+            });
+
+            document.getElementById('matchCount').innerText = matchCount;
+            
+            document.getElementById('btnSearch').disabled = false;
+            document.getElementById('btnSearch').innerText = 'ค้นหารูปภาพอีกครั้ง';
+            
+            if (matchCount > 0) {
+                updateStatus(`การค้นหาเสร็จสิ้น พบรูปภาพจำนวน ${matchCount} รูป`, 'success');
+            } else {
+                updateStatus('การค้นหาเสร็จสิ้น ไม่พบรูปภาพของคุณในระบบ', 'info');
+            }
+        }
+
+        // โหลดระบบเมื่อเปิดหน้าเว็บ
+        window.onload = initSystem;
+    </script>
+</body>
+</html>
+
