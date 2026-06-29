@@ -1,131 +1,799 @@
 <!doctype html>
-<html lang="th" class="h-full">
+<html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ส่งใจถึงครู + กาชาการ์ดครู</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MiniMart POS - ระบบขายหน้าร้าน</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#16a34a',
+            'primary-dark': '#15803d',
+            'primary-soft': '#dcfce7',
+            'ink': '#111827'
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    *{font-family:'Prompt',sans-serif;box-sizing:border-box} body{margin:0}
-    .petal{position:absolute;width:12px;height:12px;background:rgba(255,182,193,.55);border-radius:50% 0 50% 0;animation:petalFall 5s linear infinite}
-    @keyframes petalFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(140px) rotate(360deg);opacity:0}}
-    .rarity-N{border-color:#9ca3af}.rarity-R{border-color:#60a5fa}.rarity-SR{border-color:#a78bfa}.rarity-SSR{border-color:#fbbf24;box-shadow:0 0 26px rgba(251,191,36,.55)}
-    .shimmer{background:linear-gradient(90deg,transparent 30%,rgba(255,215,0,.45) 50%,transparent 70%);background-size:200% 100%;animation:shimmer 2s infinite}@keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
-    .gacha-machine{position:relative;overflow:hidden}.gacha-machine:before{content:"";position:absolute;inset:-35%;background:conic-gradient(from 0deg,transparent,#f9a8d4,transparent,#fde68a,transparent);animation:spin 1.2s linear infinite;opacity:.45}@keyframes spin{to{transform:rotate(360deg)}}
-    .spark-pop{animation:shake .9s ease-in-out}@keyframes shake{0%,100%{transform:rotate(0)}20%{transform:rotate(-7deg) scale(1.03)}40%{transform:rotate(7deg) scale(1.05)}60%{transform:rotate(-5deg) scale(1.04)}80%{transform:rotate(5deg) scale(1.02)}}
-    .card-reveal{animation:reveal .55s ease-out}@keyframes reveal{0%{transform:scale(.35) rotateY(90deg);opacity:0}70%{transform:scale(1.08) rotateY(0);opacity:1}100%{transform:scale(1)}}
-    .ssr-burst{animation:reveal .55s ease-out, ssrGlow 1.3s ease-in-out infinite alternate}@keyframes ssrGlow{from{filter:drop-shadow(0 0 4px #fbbf24)}to{filter:drop-shadow(0 0 22px #f59e0b)}}
-    .nav-btn.active{background:#ec4899;color:white;box-shadow:0 6px 14px rgba(236,72,153,.24);border-color:#ec4899}
+    * { font-family: 'Prompt', sans-serif; }
+    body { background:#f6f8f7; }
+    .card-shadow { box-shadow: 0 8px 26px rgba(15, 23, 42, .06); }
+    .soft-border { border:1px solid #e5e7eb; }
+    .btn-touch { min-height:48px; }
+    .page { display:none; }
+    .page.active { display:block; }
+    .menu-active { background:#16a34a; color:#fff; }
+    .menu-active i { color:#fff; }
+    ::-webkit-scrollbar { width:8px; height:8px; }
+    ::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:999px; }
+    @media print {
+      body * { visibility:hidden; }
+      #print-area, #print-area * { visibility:visible; }
+      #print-area { position:absolute; left:0; top:0; width:80mm; background:white; padding:8px; }
+      .no-print { display:none !important; }
+    }
   </style>
 </head>
-<body class="h-full">
-<div id="app" class="min-h-full w-full overflow-auto" style="background:linear-gradient(135deg,#FFF0F5 0%,#FFE4E1 35%,#FFF5EE 70%,#FFFAF0 100%)">
-  <div class="fixed inset-0 pointer-events-none overflow-hidden" style="z-index:0">
-    <div class="petal" style="left:10%;animation-delay:0s"></div><div class="petal" style="left:25%;animation-delay:1s"></div><div class="petal" style="left:50%;animation-delay:2s"></div><div class="petal" style="left:75%;animation-delay:.5s"></div><div class="petal" style="left:90%;animation-delay:1.5s"></div>
+
+<body class="h-screen overflow-hidden text-ink">
+  <div class="h-full flex">
+    <aside class="w-72 bg-white card-shadow flex flex-col shrink-0 no-print">
+      <div class="p-5 border-b border-gray-100">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center">
+            <i data-lucide="store"></i>
+          </div>
+          <div>
+            <h1 id="side-store-name" class="text-xl font-bold text-primary">MiniMart POS</h1>
+            <p class="text-xs text-gray-400">ระบบขายหน้าร้าน</p>
+          </div>
+        </div>
+      </div>
+
+      <nav class="flex-1 py-3 overflow-y-auto px-3 space-y-1">
+        <button data-page="sales" class="menu-btn menu-active w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-left">
+          <i data-lucide="shopping-cart" class="w-5 h-5"></i><span>ขายสินค้า</span>
+        </button>
+        <button data-page="history" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
+          <i data-lucide="receipt" class="w-5 h-5"></i><span>ประวัติบิล</span>
+        </button>
+        <button data-page="products" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
+          <i data-lucide="package" class="w-5 h-5"></i><span>จัดการสินค้า</span>
+        </button>
+        <button data-page="stock" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
+          <i data-lucide="warehouse" class="w-5 h-5"></i><span>สต๊อกสินค้า</span>
+        </button>
+        <button data-page="returns" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
+          <i data-lucide="refresh-cw" class="w-5 h-5"></i><span>เปลี่ยน/คืนสินค้า</span>
+        </button>
+        <button data-page="reports" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
+          <i data-lucide="bar-chart-3" class="w-5 h-5"></i><span>รายงาน</span>
+        </button>
+        <button data-page="settings" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
+          <i data-lucide="settings" class="w-5 h-5"></i><span>ตั้งค่าระบบ</span>
+        </button>
+      </nav>
+
+      <div class="p-4 border-t border-gray-100">
+        <button onclick="resetDemoData()" class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-red-600 bg-red-50 hover:bg-red-100 font-medium">
+          <i data-lucide="rotate-ccw" class="w-5 h-5"></i><span>รีเซ็ตข้อมูลตัวอย่าง</span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0">
+      <header class="bg-white card-shadow px-6 py-3 flex items-center justify-between shrink-0 no-print">
+        <div>
+          <h2 id="top-store-name" class="font-bold text-xl">MiniMart POS</h2>
+          <p id="datetime-display" class="text-sm text-gray-500"></p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="bg-primary-soft px-4 py-2 rounded-2xl flex items-center gap-2">
+            <i data-lucide="trending-up" class="w-5 h-5 text-primary"></i>
+            <div>
+              <p class="text-xs text-gray-500">ยอดขายวันนี้</p>
+              <p id="today-sales" class="text-primary font-bold">0.00 บาท</p>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-2 rounded-2xl flex items-center gap-2">
+            <i data-lucide="user" class="w-5 h-5 text-gray-500"></i>
+            <span id="cashier-display" class="font-medium">แอดมิน</span>
+          </div>
+        </div>
+      </header>
+
+      <section id="page-sales" class="page active flex-1 overflow-hidden">
+        <div class="h-full flex overflow-hidden">
+          <div class="flex-1 p-5 overflow-hidden flex flex-col">
+            <div class="flex gap-3 mb-4">
+              <div class="relative flex-1">
+                <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5"></i>
+                <input id="search-input" type="text" placeholder="ค้นหาสินค้า ชื่อสินค้า รหัสสินค้า หรือบาร์โค้ด"
+                  class="w-full pl-12 pr-4 py-4 bg-white soft-border rounded-2xl text-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
+              </div>
+              <button onclick="focusBarcode()" class="btn-touch px-5 bg-white soft-border rounded-2xl hover:bg-gray-50 flex items-center gap-2 font-medium">
+                <i data-lucide="scan-line" class="w-5 h-5"></i><span>สแกน</span>
+              </button>
+            </div>
+
+            <div class="flex gap-2 mb-4 overflow-x-auto pb-1" id="category-filters"></div>
+            <div class="flex-1 overflow-y-auto pr-1">
+              <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3" id="products-container"></div>
+            </div>
+          </div>
+
+          <div class="w-[460px] bg-white card-shadow flex flex-col overflow-hidden shrink-0">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 class="font-bold text-xl">ตะกร้าสินค้า</h2>
+              <span class="text-sm text-gray-500" id="cart-count">0 รายการ</span>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-5 py-3" id="cart-items"></div>
+
+            <div class="px-5 py-3 border-t border-gray-100">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-semibold">ส่วนลดทั้งบิล</span>
+                <button id="toggle-discount" class="text-sm text-primary font-semibold hover:underline">เพิ่ม/ซ่อนส่วนลด</button>
+              </div>
+              <div id="discount-form" class="hidden space-y-2">
+                <div class="grid grid-cols-2 gap-2">
+                  <button id="disc-percent" class="py-2.5 rounded-xl bg-primary text-white font-semibold">เปอร์เซ็นต์</button>
+                  <button id="disc-amount" class="py-2.5 rounded-xl bg-gray-100 text-gray-600 font-semibold">จำนวนเงิน</button>
+                </div>
+                <input id="discount-value" type="number" min="0" placeholder="กรอกส่วนลด"
+                  class="w-full px-3 py-3 soft-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <select id="discount-reason" class="w-full px-3 py-3 soft-border rounded-xl focus:outline-none">
+                  <option value="">เหตุผลการลด</option>
+                  <option value="ลูกค้าประจำ">ลูกค้าประจำ</option>
+                  <option value="โปรโมชั่น">โปรโมชั่น</option>
+                  <option value="พนักงาน">พนักงาน</option>
+                  <option value="สินค้ามีตำหนิ">สินค้ามีตำหนิ</option>
+                  <option value="อื่น ๆ">อื่น ๆ</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="px-5 py-3 border-t border-gray-100">
+              <span class="text-sm font-semibold block mb-2">ช่องทางการชำระเงิน</span>
+              <div class="grid grid-cols-3 gap-2">
+                <button id="pay-cash" class="pay-btn py-3 rounded-xl bg-primary text-white font-semibold flex items-center justify-center gap-1">
+                  <i data-lucide="banknote" class="w-4 h-4"></i>เงินสด
+                </button>
+                <button id="pay-transfer" class="pay-btn py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold flex items-center justify-center gap-1">
+                  <i data-lucide="smartphone" class="w-4 h-4"></i>โอน
+                </button>
+                <button id="pay-other" class="pay-btn py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold flex items-center justify-center gap-1">
+                  <i data-lucide="credit-card" class="w-4 h-4"></i>อื่น ๆ
+                </button>
+              </div>
+
+              <div id="cash-section" class="mt-3 space-y-2">
+                <input id="cash-received" type="number" min="0" placeholder="รับเงิน"
+                  class="w-full px-4 py-3 soft-border rounded-xl text-lg focus:outline-none focus:ring-2 focus:ring-primary/30">
+                <div class="flex justify-between text-base">
+                  <span class="text-gray-500">เงินทอน</span>
+                  <span id="change-amount" class="font-bold text-primary">0.00 บาท</span>
+                </div>
+              </div>
+
+              <div id="other-section" class="mt-3 hidden space-y-2">
+                <select id="other-type" class="w-full px-4 py-3 soft-border rounded-xl focus:outline-none">
+                  <option value="ใช้สิทธิ์">ใช้สิทธิ์</option>
+                  <option value="ฟรี">ฟรี</option>
+                  <option value="เบิกบริษัท">เบิกบริษัท</option>
+                  <option value="เครดิตร้าน">เครดิตร้าน</option>
+                  <option value="อื่น ๆ">อื่น ๆ</option>
+                </select>
+                <input id="other-detail" type="text" placeholder="รายละเอียดเพิ่มเติม"
+                  class="w-full px-4 py-3 soft-border rounded-xl focus:outline-none">
+              </div>
+            </div>
+
+            <div class="px-5 py-4 border-t border-gray-100 bg-gray-50">
+              <div class="flex justify-between text-base mb-1"><span class="text-gray-500">ยอดรวม</span><span id="subtotal">0.00 บาท</span></div>
+              <div class="flex justify-between text-base mb-2"><span class="text-gray-500">ส่วนลด</span><span id="discount-display" class="text-red-500">-0.00 บาท</span></div>
+              <div class="flex justify-between items-center">
+                <span class="font-bold text-lg">ยอดสุทธิ</span>
+                <span id="net-total" class="text-3xl font-bold text-primary">0.00 บาท</span>
+              </div>
+            </div>
+
+            <div class="px-5 py-4 border-t border-gray-100 grid grid-cols-4 gap-2">
+              <button id="btn-checkout" class="btn-touch col-span-2 bg-primary hover:bg-primary-dark text-white font-bold rounded-2xl flex items-center justify-center gap-2 py-3">
+                <i data-lucide="check-circle" class="w-5 h-5"></i>ชำระเงิน
+              </button>
+              <button id="btn-clear" class="btn-touch bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-2xl py-3">ล้าง</button>
+              <button id="btn-hold" class="btn-touch bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-2xl py-3">พักบิล</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-history" class="page flex-1 overflow-y-auto p-6"></section>
+      <section id="page-products" class="page flex-1 overflow-y-auto p-6"></section>
+      <section id="page-stock" class="page flex-1 overflow-y-auto p-6"></section>
+      <section id="page-returns" class="page flex-1 overflow-y-auto p-6"></section>
+      <section id="page-reports" class="page flex-1 overflow-y-auto p-6"></section>
+      <section id="page-settings" class="page flex-1 overflow-y-auto p-6"></section>
+    </main>
   </div>
-  <main class="relative z-10 max-w-lg mx-auto px-4 py-6">
-    <header class="text-center mb-6">
-      <div class="inline-flex items-center gap-2 mb-2"><i data-lucide="heart" class="w-6 h-6 text-pink-400"></i><i data-lucide="sparkles" class="w-5 h-5 text-yellow-400"></i></div>
-      <h1 class="text-3xl font-bold text-pink-600 mb-2">ส่งใจถึงครู</h1>
-      <p class="text-sm text-pink-400 font-light">ฝากข้อความถึงคุณครู และสะสมการ์ดกาชาวันไหว้ครู</p>
-      <p id="login-chip" class="hidden mt-3 text-xs bg-white/80 border border-pink-100 text-pink-500 rounded-full px-3 py-1 inline-block"></p>
-    </header>
 
-    <nav class="flex gap-2 mb-6 overflow-x-auto pb-2" id="nav-tabs">
-      <button onclick="showSection('message')" class="nav-btn active flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium bg-white text-pink-500 border border-pink-200 whitespace-nowrap transition-all"><i data-lucide="message-circle" class="w-4 h-4"></i> ฝากข้อความ</button>
-      <button onclick="showSection('gacha')" class="nav-btn flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium bg-white text-pink-500 border border-pink-200 whitespace-nowrap transition-all"><i data-lucide="gift" class="w-4 h-4"></i> สุ่มกาชา</button>
-      <button onclick="showSection('collection')" class="nav-btn flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium bg-white text-pink-500 border border-pink-200 whitespace-nowrap transition-all"><i data-lucide="layout-grid" class="w-4 h-4"></i> การ์ดสะสม</button>
-      <button onclick="showSection('login')" class="nav-btn flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium bg-white text-pink-500 border border-pink-200 whitespace-nowrap transition-all"><i data-lucide="lock" class="w-4 h-4"></i> หลังบ้าน</button>
-    </nav>
-
-    <section id="section-message" class="section-content">
-      <div class="bg-white rounded-3xl shadow-lg p-6 border border-pink-100">
-        <div class="flex items-center gap-2 mb-4"><i data-lucide="pen-tool" class="w-5 h-5 text-pink-400"></i><h2 class="text-lg font-semibold text-gray-800">ฝากข้อความถึงครู</h2></div>
-        <label class="block text-sm text-gray-600 mb-1">เลือกครูที่ต้องการส่งข้อความ</label><select id="msg-teacher" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 text-sm bg-pink-50/50 mb-4"></select>
-        <label class="block text-sm text-gray-600 mb-1">ชื่อผู้ส่ง (ไม่ระบุก็ได้)</label><input id="msg-name" placeholder="นักเรียนผู้น่ารัก" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 text-sm bg-pink-50/50 mb-4">
-        <label class="block text-sm text-gray-600 mb-1">ข้อความถึงครู</label><textarea id="msg-text" rows="4" placeholder="เขียนข้อความรัก ๆ ถึงครูที่นี่..." class="w-full px-4 py-3 rounded-xl border border-pink-200 text-sm bg-pink-50/50 resize-none mb-4"></textarea>
-        <button onclick="sendMessage()" class="w-full py-3 bg-gradient-to-r from-pink-400 to-pink-500 text-white rounded-xl font-medium shadow-md flex items-center justify-center gap-2"><i data-lucide="send" class="w-4 h-4"></i> ส่งข้อความ</button>
+  <div id="success-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-3xl p-8 max-w-md w-full text-center card-shadow">
+      <div class="w-16 h-16 bg-primary-soft rounded-full flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="check" class="w-8 h-8 text-primary"></i>
       </div>
-    </section>
-
-    <section id="section-gacha" class="section-content hidden">
-      <div class="bg-white rounded-3xl shadow-lg p-6 border border-pink-100 text-center">
-        <div class="flex items-center justify-center gap-2 mb-2"><i data-lucide="sparkles" class="w-5 h-5 text-yellow-400"></i><h2 class="text-lg font-semibold text-gray-800">สุ่มกาชาการ์ดครู</h2><i data-lucide="sparkles" class="w-5 h-5 text-yellow-400"></i></div>
-        <p class="text-xs text-gray-500 mb-5">สุ่มการ์ดภาพจริง ถ้าซ้ำจะไม่เพิ่มเข้าคอลเลกชัน</p>
-        <div id="gacha-stage" class="gacha-machine mx-auto mb-5 w-52 h-72 rounded-3xl bg-gradient-to-br from-pink-100 via-white to-yellow-50 border-2 border-pink-100 flex items-center justify-center shadow-inner"><div class="relative z-10 text-center text-pink-400"><i data-lucide="gift" class="w-12 h-12 mx-auto mb-2"></i><p class="text-xs">กดสุ่มเพื่อเปิดการ์ด</p></div></div>
-        <div id="gacha-result" class="hidden mb-5"><div id="gacha-card" class="mx-auto w-52 rounded-2xl border-4 overflow-hidden bg-white shadow-xl card-reveal"><img id="gacha-image" class="w-full aspect-[4/5] object-cover bg-pink-50"><div class="p-3"><p id="gacha-rarity" class="text-xs font-bold mb-1"></p><p id="gacha-name" class="text-sm font-semibold text-gray-800"></p><p id="gacha-status" class="text-[11px] text-pink-500 mt-1"></p></div></div><button onclick="downloadCard()" class="mt-3 px-5 py-2 rounded-full bg-pink-50 text-pink-500 border border-pink-200 text-sm"><i data-lucide="download" class="w-4 h-4 inline"></i> บันทึกภาพการ์ดนี้</button></div>
-        <button onclick="pullGacha()" id="gacha-btn" class="px-8 py-3 bg-gradient-to-r from-yellow-400 to-pink-400 text-white rounded-xl font-semibold shadow-lg hover:scale-105 transition-all"><i data-lucide="gift" class="w-5 h-5 inline mr-1"></i> สุ่มกาชา!</button>
+      <h3 class="text-2xl font-bold mb-2">ชำระเงินสำเร็จ</h3>
+      <p id="success-bill" class="text-gray-500 mb-6"></p>
+      <p class="font-semibold mb-3">ต้องการพิมพ์ใบเสร็จหรือไม่</p>
+      <div class="space-y-2">
+        <button id="btn-print" class="w-full btn-touch bg-primary text-white font-semibold rounded-2xl py-3 flex items-center justify-center gap-2">
+          <i data-lucide="printer" class="w-5 h-5"></i>พิมพ์ใบเสร็จ
+        </button>
+        <button id="btn-preview" class="w-full btn-touch bg-gray-100 text-gray-700 font-semibold rounded-2xl py-3">
+          ดูตัวอย่างใบเสร็จ
+        </button>
+        <button id="btn-no-print" class="w-full btn-touch bg-white soft-border text-gray-700 font-semibold rounded-2xl py-3">
+          ไม่พิมพ์
+        </button>
       </div>
-    </section>
+    </div>
+  </div>
 
-    <section id="section-collection" class="section-content hidden"><div class="bg-white rounded-3xl shadow-lg p-6 border border-pink-100"><div class="flex items-center gap-2 mb-4"><i data-lucide="layout-grid" class="w-5 h-5 text-pink-400"></i><h2 class="text-lg font-semibold text-gray-800">คอลเลกชันการ์ด</h2></div><div id="collection-grid" class="grid grid-cols-3 gap-3"></div></div></section>
-
-    <section id="section-login" class="section-content hidden">
-      <div class="bg-white rounded-3xl shadow-lg p-6 border border-pink-100">
-        <div class="flex items-center gap-2 mb-4"><i data-lucide="shield" class="w-5 h-5 text-pink-400"></i><h2 class="text-lg font-semibold text-gray-800">เข้าสู่ระบบหลังบ้าน</h2></div>
-        <p class="text-xs text-gray-400 mb-4">บัญชีตัวอย่าง: super / admin / teacher รหัสผ่าน 1234</p>
-        <input id="login-user" placeholder="username" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 text-sm bg-pink-50/50 mb-3">
-        <input id="login-pass" type="password" placeholder="password" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 text-sm bg-pink-50/50 mb-4">
-        <button onclick="login()" class="w-full py-3 bg-pink-500 text-white rounded-xl font-medium">เข้าสู่ระบบ</button>
+  <div id="preview-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-3xl p-6 max-w-md w-full card-shadow">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-bold">ตัวอย่างใบเสร็จ</h3>
+        <button onclick="closePreview()" class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center"><i data-lucide="x"></i></button>
       </div>
-    </section>
+      <div id="receipt-preview" class="bg-gray-50 rounded-2xl p-4 text-sm"></div>
+      <button onclick="printReceipt()" class="mt-4 w-full btn-touch bg-primary text-white rounded-2xl font-semibold">พิมพ์ใบเสร็จ</button>
+    </div>
+  </div>
 
-    <section id="section-backoffice" class="section-content hidden">
-      <div class="bg-white rounded-3xl shadow-lg p-6 border border-pink-100">
-        <div class="flex justify-between items-center mb-4"><div><h2 class="text-lg font-semibold text-gray-800">หลังบ้าน</h2><p id="role-label" class="text-xs text-pink-400"></p></div><button onclick="logout()" class="text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-500">ออก</button></div>
-        <div id="admin-tabs" class="flex gap-2 overflow-x-auto pb-2 mb-4"></div>
-        <div id="admin-content"></div>
-      </div>
-    </section>
+  <div id="toast" class="hidden fixed bottom-5 right-5 bg-ink text-white px-5 py-3 rounded-2xl card-shadow z-[60] no-print"></div>
+  <div id="print-area" class="hidden"></div>
 
-    <footer class="text-center mt-8 mb-4 text-xs text-pink-300">กิจกรรมวันไหว้ครู 2568</footer>
-  </main>
-</div>
 <script>
-const teachers=[{id:'t1',name:'ครูสมศรี ใจดี',subject:'ภาษาไทย'},{id:'t2',name:'ครูประยุทธ์ วิชาดี',subject:'คณิตศาสตร์'},{id:'t3',name:'ครูมาลี รักเรียน',subject:'วิทยาศาสตร์'},{id:'t4',name:'ครูสมชาย ศิลป์สวย',subject:'ศิลปะ'},{id:'t5',name:'ครูวิภา อังกฤษเก่ง',subject:'ภาษาต่างประเทศ'},{id:'t6',name:'ครูธนพล กีฬาเด่น',subject:'สุขศึกษา'}];
-const users=[{username:'super',password:'1234',name:'ผู้ดูแลระบบ',role:'super_admin'},{username:'admin',password:'1234',name:'แอดมิน',role:'admin'},{username:'teacher',password:'1234',name:'ครูสมศรี ใจดี',role:'teacher',teacherId:'t1'}];
-let currentUser=JSON.parse(localStorage.getItem('current_user')||'null');
-let messages=JSON.parse(localStorage.getItem('teacher_messages')||'[]');
-let collection=JSON.parse(localStorage.getItem('gacha_collection')||'[]');
-let gachaCards=JSON.parse(localStorage.getItem('gacha_cards')||'null')||[
-{id:'card-t1-n',teacherId:'t1',name:'การ์ดครูสมศรี',rarity:'N',rate:50,imageUrl:'https://placehold.co/800x1000/FFF0F5/EC4899?text=Teacher+Card+N',active:true},
-{id:'card-t2-r',teacherId:'t2',name:'การ์ดครูประยุทธ์',rarity:'R',rate:30,imageUrl:'https://placehold.co/800x1000/EFF6FF/3B82F6?text=Teacher+Card+R',active:true},
-{id:'card-t3-sr',teacherId:'t3',name:'การ์ดครูมาลี',rarity:'SR',rate:15,imageUrl:'https://placehold.co/800x1000/F5F3FF/8B5CF6?text=Teacher+Card+SR',active:true},
-{id:'card-t4-ssr',teacherId:'t4',name:'การ์ดครูสมชาย',rarity:'SSR',rate:5,imageUrl:'https://placehold.co/800x1000/FFFBEB/F59E0B?text=Teacher+Card+SSR',active:true}
-];
-let lastPulledCard=null;
-function saveAll(){localStorage.setItem('teacher_messages',JSON.stringify(messages));localStorage.setItem('gacha_cards',JSON.stringify(gachaCards));localStorage.setItem('gacha_collection',JSON.stringify(collection));}
-function init(){const sel=document.getElementById('msg-teacher');sel.innerHTML=teachers.map(t=>`<option value="${t.id}">${t.name} - ${t.subject}</option>`).join('');renderCollection();updateLoginChip();lucide.createIcons()}
-function showSection(name){document.querySelectorAll('.section-content').forEach(s=>s.classList.add('hidden'));document.getElementById('section-'+name).classList.remove('hidden');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));if(event?.currentTarget)event.currentTarget.classList.add('active');if(name==='backoffice')renderBackoffice()}
-function gotoSection(name){document.querySelectorAll('.section-content').forEach(s=>s.classList.add('hidden'));document.getElementById('section-'+name).classList.remove('hidden');}
-function sendMessage(){const teacherId=document.getElementById('msg-teacher').value;const senderName=document.getElementById('msg-name').value.trim()||'นักเรียนนิรนาม';const text=document.getElementById('msg-text').value.trim();if(!text)return showToast('กรุณาเขียนข้อความก่อนส่ง');messages.unshift({id:'msg-'+Date.now(),teacherId,senderName,text,status:'pending',readStatus:'unread',createdAt:new Date().toLocaleString('th-TH')});saveAll();document.getElementById('msg-text').value='';showToast('ส่งข้อความแล้ว รอแอดมินอนุมัติ')}
-function pickCard(){const active=gachaCards.filter(c=>c.active);const total=active.reduce((s,c)=>s+Number(c.rate||0),0)||1;let roll=Math.random()*total;for(const c of active){roll-=Number(c.rate||0);if(roll<=0)return c}return active[0]}
-function pullGacha(){const btn=document.getElementById('gacha-btn'),stage=document.getElementById('gacha-stage'),result=document.getElementById('gacha-result');btn.disabled=true;btn.innerHTML='กำลังสุ่ม...';result.classList.add('hidden');stage.classList.remove('hidden');stage.classList.add('spark-pop');setTimeout(()=>{const card=pickCard();lastPulledCard=card;const owned=collection.some(c=>c.id===card.id);if(!owned){collection.push(card);saveAll()}stage.classList.add('hidden');stage.classList.remove('spark-pop');showGachaCard(card,owned?'มีการ์ดนี้แล้ว เลยไม่เพิ่มซ้ำ':'ได้การ์ดใหม่! เพิ่มเข้าคอลเลกชันแล้ว');if(card.rarity==='SSR')showToast('SSR!!! ได้การ์ดระดับตำนาน ✨');else showToast(owned?'ได้ซ้ำ มีใบนี้แล้ว':'ได้การ์ดใหม่แล้ว!');renderCollection();btn.disabled=false;btn.innerHTML='<i data-lucide="gift" class="w-5 h-5 inline mr-1"></i> สุ่มกาชา!';lucide.createIcons()},900)}
-function showGachaCard(card,status){document.getElementById('gacha-card').className=`mx-auto w-52 rounded-2xl border-4 overflow-hidden bg-white shadow-xl card-reveal rarity-${card.rarity} ${card.rarity==='SSR'?'ssr-burst':''}`;document.getElementById('gacha-image').src=card.imageUrl;document.getElementById('gacha-rarity').textContent=card.rarity;document.getElementById('gacha-rarity').className=`text-xs font-bold mb-1 ${card.rarity==='SSR'?'text-yellow-500':card.rarity==='SR'?'text-purple-500':card.rarity==='R'?'text-blue-500':'text-gray-500'}`;document.getElementById('gacha-name').textContent=card.name;document.getElementById('gacha-status').textContent=status;document.getElementById('gacha-result').classList.remove('hidden')}
-async function downloadCard(){const el=document.getElementById('gacha-card');const canvas=await html2canvas(el,{useCORS:true});const a=document.createElement('a');a.download=(lastPulledCard?.name||'teacher-card')+'.png';a.href=canvas.toDataURL('image/png');a.click()}
-function renderCollection(){const grid=document.getElementById('collection-grid');if(!collection.length){grid.innerHTML='<div class="text-center text-xs text-gray-400 col-span-3 py-8"><i data-lucide="inbox" class="w-8 h-8 mx-auto text-gray-300 mb-2"></i>ยังไม่มีการ์ดสะสม<br>ลองสุ่มกาชาดูสิ!</div>';return}grid.innerHTML=collection.map(c=>`<button onclick="previewCard('${c.id}')" class="rounded-xl border-2 rarity-${c.rarity} p-1 bg-gradient-to-b from-white to-pink-50 hover:scale-105 transition-transform"><img src="${c.imageUrl}" class="w-full aspect-[4/5] object-cover rounded-lg bg-pink-50 mb-1"><p class="text-[10px] font-bold">${c.rarity}</p><p class="text-[10px] text-gray-700 truncate">${c.name}</p></button>`).join('');lucide.createIcons()}
-function previewCard(id){const card=collection.find(c=>c.id===id);if(!card)return;gotoSection('gacha');document.getElementById('gacha-stage').classList.add('hidden');showGachaCard(card,'การ์ดในคอลเลกชันของคุณ')}
-function login(){const u=document.getElementById('login-user').value.trim();const p=document.getElementById('login-pass').value;const found=users.find(x=>x.username===u&&x.password===p);if(!found)return showToast('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');currentUser=found;localStorage.setItem('current_user',JSON.stringify(currentUser));updateLoginChip();gotoSection('backoffice');renderBackoffice();showToast('เข้าสู่ระบบแล้ว')}
-function logout(){currentUser=null;localStorage.removeItem('current_user');updateLoginChip();gotoSection('login')}
-function updateLoginChip(){const chip=document.getElementById('login-chip');if(currentUser){chip.classList.remove('hidden');chip.textContent=`ล็อกอิน: ${currentUser.name} (${roleName(currentUser.role)})`}else chip.classList.add('hidden')}
-function roleName(r){return r==='super_admin'?'ผู้ดูแลระบบ':r==='admin'?'แอดมิน':'ครู'}
-function renderBackoffice(){if(!currentUser){gotoSection('login');return}document.getElementById('role-label').textContent=`บทบาท: ${roleName(currentUser.role)}`;const tabs=[];if(currentUser.role==='super_admin')tabs.push(['users','จัดการผู้ใช้'],['cards','จัดการการ์ด/เรท'],['requests','คำขอข้อความ']);if(currentUser.role==='admin')tabs.push(['requests','คำขอข้อความ']);if(currentUser.role==='teacher')tabs.push(['teacher','หีบจดหมายครู']);document.getElementById('admin-tabs').innerHTML=tabs.map((t,i)=>`<button onclick="renderAdminPane('${t[0]}')" class="px-3 py-2 rounded-full text-xs ${i===0?'bg-pink-500 text-white':'bg-pink-50 text-pink-500'}">${t[1]}</button>`).join('');renderAdminPane(tabs[0][0])}
-function renderAdminPane(type){if(type==='users')return renderUsers();if(type==='cards')return renderCards();if(type==='requests')return renderRequests();if(type==='teacher')return renderTeacherMailbox()}
-function renderUsers(){document.getElementById('admin-content').innerHTML=`<div class="space-y-3">${users.map(u=>`<div class="p-3 rounded-2xl bg-pink-50/60 border border-pink-100"><p class="font-medium text-gray-700">${u.name}</p><p class="text-xs text-gray-400">${u.username} • ${roleName(u.role)} ${u.teacherId?'• '+u.teacherId:''}</p></div>`).join('')}<p class="text-xs text-gray-400">* ไฟล์เดี่ยวนี้เป็นระบบจำลอง ถ้าต่อ Firebase จริงจะสร้าง/แก้ผู้ใช้ผ่าน Auth + Firestore</p></div>`}
-function renderCards(){document.getElementById('admin-content').innerHTML=`<div class="space-y-3">${gachaCards.map(c=>`<div class="p-3 rounded-2xl border border-pink-100 bg-white"><div class="flex gap-3"><img src="${c.imageUrl}" class="w-16 h-20 object-cover rounded-lg border"><div class="flex-1"><p class="font-medium text-gray-700">${c.name}</p><p class="text-xs text-gray-400">${c.rarity} • ${teachers.find(t=>t.id===c.teacherId)?.name||'-'}</p><label class="text-xs text-gray-500">เรท</label><input type="number" value="${c.rate}" onchange="updateRate('${c.id}',this.value)" class="w-full mt-1 px-3 py-2 rounded-xl border border-pink-100 text-sm"><label class="text-xs"><input type="checkbox" ${c.active?'checked':''} onchange="toggleCard('${c.id}',this.checked)"> เปิดใช้งาน</label></div></div></div>`).join('')}</div>`}
-function updateRate(id,value){const c=gachaCards.find(x=>x.id===id);if(c)c.rate=Number(value);saveAll();showToast('บันทึกเรทแล้ว')}
-function toggleCard(id,checked){const c=gachaCards.find(x=>x.id===id);if(c)c.active=checked;saveAll();showToast('อัปเดตสถานะการ์ดแล้ว')}
-function renderRequests(){const list=messages.filter(m=>m.status==='pending');document.getElementById('admin-content').innerHTML=list.length?list.map(m=>msgBox(m,true)).join(''):'<p class="text-center text-xs text-gray-400 py-8">ไม่มีคำขอข้อความค้างอนุมัติ</p>';lucide.createIcons()}
-function approveMsg(id){const m=messages.find(x=>x.id===id);if(m)m.status='approved';saveAll();renderRequests();showToast('อนุมัติข้อความแล้ว')}
-function rejectMsg(id){messages=messages.filter(x=>x.id!==id);saveAll();renderRequests();showToast('ลบข้อความแล้ว')}
-function renderTeacherMailbox(){const myId=currentUser.teacherId;const approved=messages.filter(m=>m.teacherId===myId&&m.status==='approved'&&m.readStatus!=='archived');const archived=messages.filter(m=>m.teacherId===myId&&m.status==='approved'&&m.readStatus==='archived');const myCards=gachaCards.filter(c=>c.teacherId===myId);document.getElementById('admin-content').innerHTML=`<h3 class="font-medium text-gray-700 mb-2">การ์ดของฉัน</h3><div class="grid grid-cols-3 gap-2 mb-5">${myCards.map(c=>`<img src="${c.imageUrl}" class="rounded-xl border rarity-${c.rarity}">`).join('')||'<p class="text-xs text-gray-400 col-span-3">ยังไม่มีการ์ด</p>'}</div><h3 class="font-medium text-gray-700 mb-2">หีบจดหมาย</h3>${approved.length?approved.map(m=>msgBox(m,false)).join(''):'<p class="text-xs text-gray-400 py-4">ไม่มีจดหมายใหม่</p>'}<details class="mt-4"><summary class="text-sm text-pink-500 cursor-pointer">ข้อความที่จัดเก็บแล้ว (${archived.length})</summary><div class="mt-3">${archived.map(m=>msgBox(m,false,true)).join('')||'<p class="text-xs text-gray-400">ยังไม่มี</p>'}</div></details>`;lucide.createIcons()}
-function msgBox(m,admin=false,archived=false){return `<div class="p-4 rounded-2xl bg-pink-50/60 border border-pink-100 mb-3"><div class="flex items-start gap-3"><div class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-pink-400"><i data-lucide="mail" class="w-5 h-5"></i></div><div class="flex-1"><p class="text-sm text-gray-700">${m.text}</p><p class="text-xs text-gray-400 mt-1">จาก ${m.senderName} • ถึง ${teachers.find(t=>t.id===m.teacherId)?.name||'-'} • ${m.createdAt}</p>${admin?`<div class="flex gap-2 mt-3"><button onclick="approveMsg('${m.id}')" class="px-3 py-1.5 rounded-full bg-green-500 text-white text-xs">อนุมัติ</button><button onclick="rejectMsg('${m.id}')" class="px-3 py-1.5 rounded-full bg-gray-200 text-gray-600 text-xs">ลบ</button></div>`:(!archived?`<button onclick="archiveMsg('${m.id}')" class="mt-3 px-3 py-1.5 rounded-full bg-pink-500 text-white text-xs">อ่านแล้วจัดเก็บ</button>`:'')}</div></div></div>`}
-function archiveMsg(id){const m=messages.find(x=>x.id===id);if(m)m.readStatus='archived';saveAll();renderTeacherMailbox();showToast('จัดเก็บข้อความแล้ว')}
-function showToast(msg){let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';t.className='fixed top-4 left-1/2 -translate-x-1/2 bg-pink-600 text-white px-5 py-2 rounded-full text-sm shadow-lg z-50 transition-opacity';document.body.appendChild(t)}t.textContent=msg;t.style.opacity='1';setTimeout(()=>t.style.opacity='0',2500)}
-init();
+const KEY = 'modern_green_pos_v1';
+
+const defaultData = {
+  settings: { storeName:'MiniMart POS', cashier:'แอดมิน', receiptFooter:'ขอบคุณที่ใช้บริการ' },
+  products: [
+    { id:'P001', barcode:'8850001', name:'น้ำดื่ม 600ml', price:10, cost:6, stock:48, cat:'เครื่องดื่ม', img:'https://images.pexels.com/photos/327090/pexels-photo-327090.jpeg?auto=compress&cs=tinysrgb&w=400' },
+    { id:'P002', barcode:'8850002', name:'มาม่าต้มยำ', price:7, cost:4, stock:120, cat:'อาหาร', img:'https://images.pexels.com/photos/4518665/pexels-photo-4518665.jpeg?auto=compress&cs=tinysrgb&w=400' },
+    { id:'P003', barcode:'8850003', name:'มันฝรั่งทอด', price:25, cost:15, stock:36, cat:'ขนม', img:'https://images.pexels.com/photos/13060679/pexels-photo-13060679.jpeg?auto=compress&cs=tinysrgb&w=400' },
+    { id:'P004', barcode:'8850004', name:'กาแฟสด', price:45, cost:25, stock:20, cat:'เครื่องดื่ม', img:'https://images.pexels.com/photos/9878735/pexels-photo-9878735.jpeg?auto=compress&cs=tinysrgb&w=400' },
+    { id:'P005', barcode:'8850005', name:'นมสด 250ml', price:18, cost:11, stock:60, cat:'เครื่องดื่ม', img:'https://images.pexels.com/photos/14534512/pexels-photo-14534512.jpeg?auto=compress&cs=tinysrgb&w=400' },
+    { id:'P006', barcode:'8850006', name:'ขนมปังโฮลวีท', price:35, cost:22, stock:15, cat:'เบเกอรี่', img:'https://images.pexels.com/photos/1775050/pexels-photo-1775050.jpeg?auto=compress&cs=tinysrgb&w=400' },
+    { id:'P007', barcode:'8850007', name:'น้ำส้ม 500ml', price:20, cost:12, stock:40, cat:'เครื่องดื่ม', img:'https://images.pexels.com/photos/26791691/pexels-photo-26791691.jpeg?auto=compress&cs=tinysrgb&w=400' },
+    { id:'P008', barcode:'8850008', name:'ช็อกโกแลต', price:30, cost:18, stock:50, cat:'ขนม', img:'https://images.pexels.com/photos/4110094/pexels-photo-4110094.jpeg?auto=compress&cs=tinysrgb&w=400' }
+  ],
+  bills: [],
+  returns: [],
+  heldBills: []
+};
+
+let db = loadDB();
+let cart = [];
+let discountType = 'percent';
+let paymentMethod = 'cash';
+let selectedCat = 'ทั้งหมด';
+let lastBill = null;
+
+function loadDB(){
+  const raw = localStorage.getItem(KEY);
+  if(!raw){
+    localStorage.setItem(KEY, JSON.stringify(defaultData));
+    return structuredClone(defaultData);
+  }
+  try { return JSON.parse(raw); } 
+  catch { return structuredClone(defaultData); }
+}
+function saveDB(){ localStorage.setItem(KEY, JSON.stringify(db)); }
+function money(n){ return (Number(n)||0).toLocaleString('th-TH',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' บาท'; }
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.remove('hidden');
+  setTimeout(()=>t.classList.add('hidden'), 2200);
+}
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function getTodayBills(){ return db.bills.filter(b => (b.createdAt||'').slice(0,10) === todayStr() && !b.voided); }
+
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+  initEvents();
+  updateClock(); setInterval(updateClock,1000);
+  applySettings();
+  renderCategories();
+  renderProducts();
+  renderCart();
+  renderAllPages();
+});
+
+function updateClock(){
+  document.getElementById('datetime-display').textContent = new Date().toLocaleString('th-TH', { dateStyle:'full', timeStyle:'medium' });
+  updateTodaySales();
+}
+function updateTodaySales(){
+  const total = getTodayBills().reduce((s,b)=>s+b.netTotal,0);
+  document.getElementById('today-sales').textContent = money(total);
+}
+function applySettings(){
+  document.getElementById('side-store-name').textContent = db.settings.storeName;
+  document.getElementById('top-store-name').textContent = db.settings.storeName;
+  document.getElementById('cashier-display').textContent = db.settings.cashier;
+}
+function categories(){
+  return ['ทั้งหมด', ...new Set(db.products.map(p=>p.cat).filter(Boolean))];
+}
+function renderCategories(){
+  const box = document.getElementById('category-filters');
+  box.innerHTML = categories().map(cat => `
+    <button onclick="setCategory('${cat}')" class="cat-btn px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap ${selectedCat===cat?'bg-primary text-white':'bg-white soft-border text-gray-600 hover:bg-gray-50'}">${cat}</button>
+  `).join('');
+}
+function setCategory(cat){ selectedCat=cat; renderCategories(); renderProducts(); }
+function filteredProducts(){
+  const q = document.getElementById('search-input')?.value?.trim().toLowerCase() || '';
+  return db.products.filter(p => {
+    const matchCat = selectedCat === 'ทั้งหมด' || p.cat === selectedCat;
+    const matchQ = !q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || String(p.barcode||'').toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
+}
+function renderProducts(){
+  const c = document.getElementById('products-container');
+  const list = filteredProducts();
+  if(!list.length){
+    c.innerHTML = `<div class="col-span-full bg-white rounded-3xl p-10 text-center text-gray-400">ไม่พบสินค้า</div>`;
+    return;
+  }
+  c.innerHTML = list.map(p => `
+    <button onclick="addToCart('${p.id}')" class="bg-white rounded-3xl card-shadow p-3 text-left hover:ring-2 hover:ring-primary/30 transition active:scale-[.98] ${p.stock<=0?'opacity-50 pointer-events-none':''}">
+      <div class="aspect-square rounded-2xl overflow-hidden bg-gray-50 mb-3">
+        <img src="${p.img || ''}" onerror="this.src='https://placehold.co/400x400?text=Product'" alt="${p.name}" class="w-full h-full object-cover" loading="lazy">
+      </div>
+      <p class="font-semibold text-base text-gray-800 truncate">${p.name}</p>
+      <p class="text-primary font-bold text-xl">${money(p.price).replace(' บาท','')}</p>
+      <p class="text-sm ${p.stock<=5?'text-red-500':'text-gray-400'}">คงเหลือ ${p.stock} ชิ้น</p>
+    </button>
+  `).join('');
+}
+function focusBarcode(){ document.getElementById('search-input').focus(); }
+
+function addToCart(id){
+  const p = db.products.find(x=>x.id===id);
+  if(!p || p.stock<=0) return showToast('สินค้าไม่พอขาย');
+  const existing = cart.find(x=>x.id===id);
+  const currentQty = existing ? existing.qty : 0;
+  if(currentQty + 1 > p.stock) return showToast('จำนวนเกินสต๊อก');
+  if(existing) existing.qty++;
+  else cart.push({ id:p.id, name:p.name, price:p.price, cost:p.cost||0, qty:1 });
+  renderCart();
+}
+function renderCart(){
+  const box = document.getElementById('cart-items');
+  if(!cart.length){
+    box.innerHTML = `
+      <div class="h-full flex flex-col items-center justify-center text-gray-300">
+        <i data-lucide="shopping-bag" class="w-14 h-14"></i>
+        <p class="mt-3">ยังไม่มีสินค้าในตะกร้า</p>
+      </div>`;
+  } else {
+    box.innerHTML = cart.map((item,i)=>`
+      <div class="py-3 border-b border-gray-100">
+        <div class="flex justify-between gap-3 mb-2">
+          <div class="min-w-0">
+            <p class="font-semibold truncate">${item.name}</p>
+            <p class="text-sm text-gray-400">${money(item.price)} x ${item.qty}</p>
+          </div>
+          <p class="font-bold">${money(item.price*item.qty)}</p>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <button onclick="changeQty(${i},-1)" class="w-10 h-10 rounded-xl bg-gray-100 font-bold text-lg">−</button>
+            <span class="w-10 text-center font-bold">${item.qty}</span>
+            <button onclick="changeQty(${i},1)" class="w-10 h-10 rounded-xl bg-gray-100 font-bold text-lg">+</button>
+          </div>
+          <button onclick="removeItem(${i})" class="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+        </div>
+      </div>
+    `).join('');
+  }
+  document.getElementById('cart-count').textContent = cart.reduce((s,i)=>s+i.qty,0) + ' รายการ';
+  updateSummary();
+  lucide.createIcons();
+}
+function changeQty(i,d){
+  const item = cart[i];
+  const p = db.products.find(x=>x.id===item.id);
+  if(d>0 && item.qty+1 > p.stock) return showToast('จำนวนเกินสต๊อก');
+  item.qty += d;
+  if(item.qty<=0) cart.splice(i,1);
+  renderCart();
+}
+function removeItem(i){ cart.splice(i,1); renderCart(); }
+function subtotal(){ return cart.reduce((s,i)=>s+i.price*i.qty,0); }
+function discountAmount(){
+  const val = Number(document.getElementById('discount-value').value)||0;
+  const sub = subtotal();
+  let d = discountType==='percent' ? sub*val/100 : val;
+  return Math.min(Math.max(0,d), sub);
+}
+function updateSummary(){
+  const sub = subtotal();
+  const disc = discountAmount();
+  const net = Math.max(0, sub-disc);
+  document.getElementById('subtotal').textContent = money(sub);
+  document.getElementById('discount-display').textContent = '-' + money(disc);
+  document.getElementById('net-total').textContent = money(net);
+  const cash = Number(document.getElementById('cash-received').value)||0;
+  document.getElementById('change-amount').textContent = money(Math.max(0,cash-net));
+}
+
+function initEvents(){
+  document.querySelectorAll('.menu-btn').forEach(btn => btn.addEventListener('click', () => switchPage(btn.dataset.page)));
+  document.getElementById('search-input').addEventListener('input', renderProducts);
+  document.getElementById('toggle-discount').addEventListener('click', ()=>document.getElementById('discount-form').classList.toggle('hidden'));
+  document.getElementById('disc-percent').addEventListener('click', ()=>setDiscountType('percent'));
+  document.getElementById('disc-amount').addEventListener('click', ()=>setDiscountType('fixed'));
+  document.getElementById('discount-value').addEventListener('input', updateSummary);
+  document.getElementById('cash-received').addEventListener('input', updateSummary);
+  document.getElementById('pay-cash').addEventListener('click', ()=>setPayment('cash'));
+  document.getElementById('pay-transfer').addEventListener('click', ()=>setPayment('transfer'));
+  document.getElementById('pay-other').addEventListener('click', ()=>setPayment('other'));
+  document.getElementById('btn-clear').addEventListener('click', ()=>{ if(confirm('ล้างตะกร้าหรือไม่')){ cart=[]; renderCart(); }});
+  document.getElementById('btn-hold').addEventListener('click', holdBill);
+  document.getElementById('btn-checkout').addEventListener('click', checkout);
+  document.getElementById('btn-no-print').addEventListener('click', closeSuccess);
+  document.getElementById('btn-preview').addEventListener('click', previewReceipt);
+  document.getElementById('btn-print').addEventListener('click', printReceipt);
+}
+function switchPage(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.menu-btn').forEach(b=>{
+    b.classList.remove('menu-active'); b.classList.add('text-gray-600','hover:bg-gray-50');
+  });
+  document.querySelector(`[data-page="${page}"]`).classList.add('menu-active');
+  document.querySelector(`[data-page="${page}"]`).classList.remove('text-gray-600','hover:bg-gray-50');
+  renderAllPages();
+}
+function setDiscountType(type){
+  discountType = type;
+  const p = document.getElementById('disc-percent'), a = document.getElementById('disc-amount');
+  [p,a].forEach(b=>{ b.classList.remove('bg-primary','text-white'); b.classList.add('bg-gray-100','text-gray-600'); });
+  const active = type==='percent'?p:a;
+  active.classList.add('bg-primary','text-white'); active.classList.remove('bg-gray-100','text-gray-600');
+  updateSummary();
+}
+function setPayment(method){
+  paymentMethod = method;
+  document.querySelectorAll('.pay-btn').forEach(b=>{ b.classList.remove('bg-primary','text-white'); b.classList.add('bg-gray-100','text-gray-600'); });
+  const active = document.getElementById(method==='cash'?'pay-cash':method==='transfer'?'pay-transfer':'pay-other');
+  active.classList.add('bg-primary','text-white'); active.classList.remove('bg-gray-100','text-gray-600');
+  document.getElementById('cash-section').classList.toggle('hidden', method!=='cash');
+  document.getElementById('other-section').classList.toggle('hidden', method!=='other');
+}
+
+function checkout(){
+  if(!cart.length) return showToast('ยังไม่มีสินค้าในตะกร้า');
+  const sub = subtotal(), disc = discountAmount(), net = Math.max(0, sub-disc);
+  const cash = Number(document.getElementById('cash-received').value)||0;
+  if(paymentMethod==='cash' && cash < net) return showToast('รับเงินไม่พอ');
+  const billNo = 'INV-' + new Date().toISOString().slice(0,10).replaceAll('-','') + '-' + String(db.bills.length+1).padStart(4,'0');
+  const bill = {
+    billNo, items: cart.map(i=>({...i})), subtotal: sub, discount: disc, discountType,
+    discountValue: Number(document.getElementById('discount-value').value)||0,
+    discountReason: document.getElementById('discount-reason').value || '',
+    netTotal: net, paymentMethod,
+    paymentText: paymentMethod==='cash'?'เงินสด':paymentMethod==='transfer'?'โอนเงิน':document.getElementById('other-type').value,
+    otherDetail: paymentMethod==='other'?document.getElementById('other-detail').value:'',
+    cashReceived: paymentMethod==='cash'?cash:net,
+    change: paymentMethod==='cash'?Math.max(0,cash-net):0,
+    cashier: db.settings.cashier,
+    createdAt: new Date().toISOString(),
+    voided:false
+  };
+  bill.items.forEach(item => {
+    const p = db.products.find(x=>x.id===item.id);
+    if(p) p.stock -= item.qty;
+  });
+  db.bills.push(bill);
+  saveDB();
+  lastBill = bill;
+  cart = [];
+  document.getElementById('discount-value').value = '';
+  document.getElementById('cash-received').value = '';
+  renderProducts(); renderCart(); renderAllPages(); updateTodaySales();
+  document.getElementById('success-bill').textContent = billNo + ' | ยอดสุทธิ ' + money(net);
+  document.getElementById('success-modal').classList.remove('hidden');
+}
+function closeSuccess(){ document.getElementById('success-modal').classList.add('hidden'); }
+function holdBill(){
+  if(!cart.length) return showToast('ยังไม่มีสินค้าให้พักบิล');
+  db.heldBills.push({ id:'H'+Date.now(), items:cart, createdAt:new Date().toISOString() });
+  saveDB(); cart=[]; renderCart(); showToast('พักบิลแล้ว');
+}
+
+function receiptHTML(bill){
+  if(!bill) return '';
+  return `
+    <div style="font-family:monospace; color:#111;">
+      <div style="text-align:center; font-weight:bold; font-size:16px;">${db.settings.storeName}</div>
+      <div style="text-align:center;">ใบเสร็จรับเงิน</div>
+      <hr>
+      <div>เลขที่: ${bill.billNo}</div>
+      <div>วันที่: ${new Date(bill.createdAt).toLocaleString('th-TH')}</div>
+      <div>ผู้ขาย: ${bill.cashier}</div>
+      <hr>
+      ${bill.items.map(i=>`
+        <div style="display:flex; justify-content:space-between; gap:8px;">
+          <span>${i.name} x${i.qty}</span><span>${(i.price*i.qty).toFixed(2)}</span>
+        </div>
+      `).join('')}
+      <hr>
+      <div style="display:flex; justify-content:space-between;"><b>ยอดรวม</b><b>${bill.subtotal.toFixed(2)}</b></div>
+      <div style="display:flex; justify-content:space-between;">ส่วนลด<span>${bill.discount.toFixed(2)}</span></div>
+      <div style="display:flex; justify-content:space-between; font-size:16px;"><b>ยอดสุทธิ</b><b>${bill.netTotal.toFixed(2)}</b></div>
+      <div>ชำระ: ${bill.paymentText}${bill.otherDetail ? ' - '+bill.otherDetail : ''}</div>
+      ${bill.paymentMethod==='cash' ? `<div>รับเงิน: ${bill.cashReceived.toFixed(2)}</div><div>เงินทอน: ${bill.change.toFixed(2)}</div>` : ''}
+      <hr>
+      <div style="text-align:center;">${db.settings.receiptFooter}</div>
+    </div>`;
+}
+function previewReceipt(){
+  document.getElementById('receipt-preview').innerHTML = receiptHTML(lastBill);
+  document.getElementById('preview-modal').classList.remove('hidden');
+}
+function closePreview(){ document.getElementById('preview-modal').classList.add('hidden'); }
+function printReceipt(){
+  if(!lastBill) return;
+  document.getElementById('print-area').innerHTML = receiptHTML(lastBill);
+  document.getElementById('print-area').classList.remove('hidden');
+  window.print();
+  document.getElementById('print-area').classList.add('hidden');
+  closeSuccess(); closePreview();
+}
+
+function renderAllPages(){
+  renderHistoryPage();
+  renderProductsPage();
+  renderStockPage();
+  renderReturnsPage();
+  renderReportsPage();
+  renderSettingsPage();
+  lucide.createIcons();
+}
+function pageTitle(title, sub=''){
+  return `<div class="mb-5"><h2 class="text-3xl font-bold">${title}</h2>${sub?`<p class="text-gray-500 mt-1">${sub}</p>`:''}</div>`;
+}
+function renderHistoryPage(){
+  const box = document.getElementById('page-history');
+  const bills = [...db.bills].reverse();
+  box.innerHTML = pageTitle('ประวัติบิล','ค้นหา ตรวจสอบ และพิมพ์บิลย้อนหลัง') + `
+    <div class="bg-white rounded-3xl card-shadow overflow-hidden">
+      <table class="w-full text-left">
+        <thead class="bg-gray-50 text-gray-500">
+          <tr><th class="p-4">เลขที่บิล</th><th>วันที่</th><th>ชำระ</th><th>ยอดสุทธิ</th><th>สถานะ</th><th class="text-right p-4">จัดการ</th></tr>
+        </thead>
+        <tbody>
+          ${bills.map(b=>`
+            <tr class="border-t border-gray-100">
+              <td class="p-4 font-semibold">${b.billNo}</td>
+              <td>${new Date(b.createdAt).toLocaleString('th-TH')}</td>
+              <td>${b.paymentText}</td>
+              <td class="font-bold text-primary">${money(b.netTotal)}</td>
+              <td>${b.voided?'<span class="text-red-500">ยกเลิกแล้ว</span>':'<span class="text-green-600">สำเร็จ</span>'}</td>
+              <td class="p-4 text-right">
+                <button onclick="setLastBill('${b.billNo}'); previewReceipt()" class="px-3 py-2 rounded-xl bg-gray-100 font-semibold">ดู/พิมพ์</button>
+              </td>
+            </tr>
+          `).join('') || `<tr><td colspan="6" class="p-8 text-center text-gray-400">ยังไม่มีประวัติบิล</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+function setLastBill(no){ lastBill = db.bills.find(b=>b.billNo===no); }
+
+function renderProductsPage(){
+  const box = document.getElementById('page-products');
+  box.innerHTML = pageTitle('จัดการสินค้า','เพิ่ม แก้ไข ลบสินค้า และกำหนดราคา') + `
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+      <form onsubmit="saveProduct(event)" class="bg-white rounded-3xl card-shadow p-5 space-y-3">
+        <h3 class="text-xl font-bold">เพิ่ม/แก้ไขสินค้า</h3>
+        <input id="product-id" placeholder="รหัสสินค้า เช่น P009" class="w-full p-3 soft-border rounded-xl">
+        <input id="product-barcode" placeholder="บาร์โค้ด" class="w-full p-3 soft-border rounded-xl">
+        <input id="product-name" placeholder="ชื่อสินค้า" class="w-full p-3 soft-border rounded-xl">
+        <div class="grid grid-cols-2 gap-2">
+          <input id="product-price" type="number" placeholder="ราคาขาย" class="w-full p-3 soft-border rounded-xl">
+          <input id="product-cost" type="number" placeholder="ต้นทุน" class="w-full p-3 soft-border rounded-xl">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <input id="product-stock" type="number" placeholder="สต๊อก" class="w-full p-3 soft-border rounded-xl">
+          <input id="product-cat" placeholder="หมวดหมู่" class="w-full p-3 soft-border rounded-xl">
+        </div>
+        <input id="product-img" placeholder="ลิงก์รูปสินค้า" class="w-full p-3 soft-border rounded-xl">
+        <button class="w-full btn-touch bg-primary text-white rounded-2xl font-bold">บันทึกสินค้า</button>
+      </form>
+      <div class="xl:col-span-2 bg-white rounded-3xl card-shadow overflow-hidden">
+        <table class="w-full text-left">
+          <thead class="bg-gray-50 text-gray-500"><tr><th class="p-4">สินค้า</th><th>ราคา</th><th>สต๊อก</th><th class="text-right p-4">จัดการ</th></tr></thead>
+          <tbody>
+            ${db.products.map(p=>`
+              <tr class="border-t border-gray-100">
+                <td class="p-4"><b>${p.name}</b><br><span class="text-sm text-gray-400">${p.id} | ${p.barcode||'-'} | ${p.cat}</span></td>
+                <td>${money(p.price)}</td><td>${p.stock}</td>
+                <td class="p-4 text-right">
+                  <button onclick="editProduct('${p.id}')" class="px-3 py-2 rounded-xl bg-gray-100 font-semibold">แก้ไข</button>
+                  <button onclick="deleteProduct('${p.id}')" class="px-3 py-2 rounded-xl bg-red-50 text-red-600 font-semibold">ลบ</button>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+function saveProduct(e){
+  e.preventDefault();
+  const id = document.getElementById('product-id').value.trim();
+  if(!id) return showToast('กรุณากรอกรหัสสินค้า');
+  const p = {
+    id, barcode:document.getElementById('product-barcode').value.trim(),
+    name:document.getElementById('product-name').value.trim(),
+    price:Number(document.getElementById('product-price').value)||0,
+    cost:Number(document.getElementById('product-cost').value)||0,
+    stock:Number(document.getElementById('product-stock').value)||0,
+    cat:document.getElementById('product-cat').value.trim() || 'ทั่วไป',
+    img:document.getElementById('product-img').value.trim()
+  };
+  if(!p.name) return showToast('กรุณากรอกชื่อสินค้า');
+  const idx = db.products.findIndex(x=>x.id===id);
+  if(idx>=0) db.products[idx]=p; else db.products.push(p);
+  saveDB(); renderCategories(); renderProducts(); renderAllPages(); showToast('บันทึกสินค้าแล้ว');
+}
+function editProduct(id){
+  const p = db.products.find(x=>x.id===id);
+  if(!p) return;
+  switchPage('products');
+  setTimeout(()=>{
+    document.getElementById('product-id').value=p.id;
+    document.getElementById('product-barcode').value=p.barcode||'';
+    document.getElementById('product-name').value=p.name;
+    document.getElementById('product-price').value=p.price;
+    document.getElementById('product-cost').value=p.cost||0;
+    document.getElementById('product-stock').value=p.stock;
+    document.getElementById('product-cat').value=p.cat;
+    document.getElementById('product-img').value=p.img||'';
+  },0);
+}
+function deleteProduct(id){
+  if(!confirm('ลบสินค้านี้หรือไม่')) return;
+  db.products = db.products.filter(p=>p.id!==id);
+  saveDB(); renderCategories(); renderProducts(); renderAllPages();
+}
+
+function renderStockPage(){
+  const box = document.getElementById('page-stock');
+  box.innerHTML = pageTitle('สต๊อกสินค้า','ตรวจสอบสินค้าคงเหลือและปรับจำนวน') + `
+    <div class="bg-white rounded-3xl card-shadow overflow-hidden">
+      <table class="w-full text-left">
+        <thead class="bg-gray-50 text-gray-500"><tr><th class="p-4">สินค้า</th><th>คงเหลือ</th><th>สถานะ</th><th class="text-right p-4">ปรับสต๊อก</th></tr></thead>
+        <tbody>${db.products.map(p=>`
+          <tr class="border-t border-gray-100">
+            <td class="p-4 font-semibold">${p.name}</td>
+            <td class="font-bold">${p.stock}</td>
+            <td>${p.stock<=0?'<span class="text-red-600">หมด</span>':p.stock<=5?'<span class="text-orange-500">ใกล้หมด</span>':'<span class="text-green-600">ปกติ</span>'}</td>
+            <td class="p-4 text-right">
+              <input id="stock-${p.id}" type="number" class="w-24 p-2 soft-border rounded-xl" placeholder="+/-">
+              <button onclick="adjustStock('${p.id}')" class="px-3 py-2 bg-primary text-white rounded-xl font-semibold">บันทึก</button>
+            </td>
+          </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+}
+function adjustStock(id){
+  const val = Number(document.getElementById('stock-'+id).value)||0;
+  const p = db.products.find(x=>x.id===id);
+  p.stock = Math.max(0, p.stock + val);
+  saveDB(); renderProducts(); renderAllPages(); showToast('ปรับสต๊อกแล้ว');
+}
+
+function renderReturnsPage(){
+  const box = document.getElementById('page-returns');
+  box.innerHTML = pageTitle('เปลี่ยน/คืนสินค้า','ค้นหาเลขที่บิลเพื่อคืนสินค้าเข้าสต๊อกและบันทึกประวัติ') + `
+    <div class="bg-white rounded-3xl card-shadow p-5 mb-5">
+      <div class="flex gap-3">
+        <input id="return-bill-input" placeholder="กรอกเลขที่บิล เช่น INV-20260629-0001" class="flex-1 p-4 soft-border rounded-2xl text-lg">
+        <button onclick="findReturnBill()" class="px-6 bg-primary text-white rounded-2xl font-bold">ค้นหาบิล</button>
+      </div>
+      <div id="return-result" class="mt-5"></div>
+    </div>
+    <div class="bg-white rounded-3xl card-shadow p-5">
+      <h3 class="text-xl font-bold mb-3">ประวัติคืน/เปลี่ยนสินค้า</h3>
+      ${db.returns.map(r=>`<div class="border-t py-3"><b>${r.billNo}</b> | ${r.itemName} x${r.qty} | ${r.type} | ${new Date(r.createdAt).toLocaleString('th-TH')}</div>`).join('') || '<p class="text-gray-400">ยังไม่มีประวัติ</p>'}
+    </div>`;
+}
+function findReturnBill(){
+  const no = document.getElementById('return-bill-input').value.trim();
+  const bill = db.bills.find(b=>b.billNo===no);
+  const box = document.getElementById('return-result');
+  if(!bill) return box.innerHTML = '<p class="text-red-500 font-semibold">ไม่พบบิล</p>';
+  box.innerHTML = `
+    <h3 class="font-bold text-lg mb-2">${bill.billNo}</h3>
+    ${bill.items.map((i,idx)=>`
+      <div class="flex items-center justify-between border-t py-3">
+        <div><b>${i.name}</b><br><span class="text-gray-500">ซื้อ ${i.qty} ชิ้น ราคา ${money(i.price*i.qty)}</span></div>
+        <div class="flex gap-2">
+          <input id="return-qty-${idx}" type="number" min="1" max="${i.qty}" value="1" class="w-20 p-2 soft-border rounded-xl">
+          <select id="return-type-${idx}" class="p-2 soft-border rounded-xl"><option>คืนสินค้า</option><option>เปลี่ยนสินค้า</option></select>
+          <button onclick="processReturn('${bill.billNo}',${idx})" class="px-3 py-2 bg-primary text-white rounded-xl font-semibold">บันทึก</button>
+        </div>
+      </div>`).join('')}`;
+}
+function processReturn(billNo, idx){
+  const bill = db.bills.find(b=>b.billNo===billNo);
+  const item = bill.items[idx];
+  const qty = Math.min(Number(document.getElementById('return-qty-'+idx).value)||1, item.qty);
+  const type = document.getElementById('return-type-'+idx).value;
+  const p = db.products.find(x=>x.id===item.id);
+  if(p) p.stock += qty;
+  db.returns.push({ id:'R'+Date.now(), billNo, itemId:item.id, itemName:item.name, qty, type, createdAt:new Date().toISOString() });
+  saveDB(); renderProducts(); renderAllPages(); showToast('บันทึกการคืน/เปลี่ยนสินค้าแล้ว');
+}
+
+function renderReportsPage(){
+  const today = getTodayBills();
+  const sales = today.reduce((s,b)=>s+b.netTotal,0);
+  const profit = today.reduce((s,b)=>s + b.items.reduce((x,i)=>x+(i.price-(i.cost||0))*i.qty,0) - b.discount,0);
+  const count = today.length;
+  const items = {};
+  today.forEach(b=>b.items.forEach(i=>{ items[i.name]=(items[i.name]||0)+i.qty; }));
+  const best = Object.entries(items).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  document.getElementById('page-reports').innerHTML = pageTitle('รายงาน','สรุปยอดขายและกำไรประจำวัน') + `
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+      <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">ยอดขายวันนี้</p><h3 class="text-3xl font-bold text-primary">${money(sales)}</h3></div>
+      <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">กำไรประมาณการ</p><h3 class="text-3xl font-bold">${money(profit)}</h3></div>
+      <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">จำนวนบิล</p><h3 class="text-3xl font-bold">${count}</h3></div>
+    </div>
+    <div class="bg-white p-6 rounded-3xl card-shadow">
+      <h3 class="text-xl font-bold mb-3">สินค้าขายดีวันนี้</h3>
+      ${best.map(([name,qty])=>`<div class="flex justify-between border-t py-3"><span>${name}</span><b>${qty} ชิ้น</b></div>`).join('') || '<p class="text-gray-400">ยังไม่มีรายการขายวันนี้</p>'}
+    </div>`;
+}
+function renderSettingsPage(){
+  document.getElementById('page-settings').innerHTML = pageTitle('ตั้งค่าระบบ','ตั้งค่าชื่อร้าน ผู้ขาย และข้อความท้ายใบเสร็จ') + `
+    <form onsubmit="saveSettings(event)" class="bg-white rounded-3xl card-shadow p-6 max-w-xl space-y-3">
+      <label class="font-semibold">ชื่อร้าน</label>
+      <input id="set-store" value="${db.settings.storeName}" class="w-full p-4 soft-border rounded-2xl">
+      <label class="font-semibold">ชื่อพนักงาน/ผู้ขาย</label>
+      <input id="set-cashier" value="${db.settings.cashier}" class="w-full p-4 soft-border rounded-2xl">
+      <label class="font-semibold">ข้อความท้ายใบเสร็จ</label>
+      <input id="set-footer" value="${db.settings.receiptFooter}" class="w-full p-4 soft-border rounded-2xl">
+      <button class="btn-touch px-6 bg-primary text-white rounded-2xl font-bold">บันทึกการตั้งค่า</button>
+    </form>`;
+}
+function saveSettings(e){
+  e.preventDefault();
+  db.settings.storeName = document.getElementById('set-store').value.trim() || 'MiniMart POS';
+  db.settings.cashier = document.getElementById('set-cashier').value.trim() || 'แอดมิน';
+  db.settings.receiptFooter = document.getElementById('set-footer').value.trim() || 'ขอบคุณที่ใช้บริการ';
+  saveDB(); applySettings(); renderAllPages(); showToast('บันทึกการตั้งค่าแล้ว');
+}
+function resetDemoData(){
+  if(!confirm('รีเซ็ตข้อมูลทั้งหมดกลับเป็นตัวอย่างหรือไม่')) return;
+  localStorage.setItem(KEY, JSON.stringify(defaultData));
+  db = loadDB(); cart=[]; selectedCat='ทั้งหมด';
+  applySettings(); renderCategories(); renderProducts(); renderCart(); renderAllPages(); updateTodaySales();
+}
 </script>
 </body>
 </html>
