@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>งามตา SHOP - ระบบขายหน้าร้าน</title>
+  <title>งามตา SHOP - POS</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -26,6 +26,8 @@
   <style>
     * { font-family: 'Prompt', sans-serif; }
     body { background:#f6f8f7; }
+    .scroll-safe { min-height:0; overflow:auto; -webkit-overflow-scrolling:touch; }
+    .short-help { display:none !important; }
     .card-shadow { box-shadow: 0 8px 26px rgba(15, 23, 42, .06); }
     .soft-border { border:1px solid #e5e7eb; }
     .btn-touch { min-height:48px; }
@@ -41,6 +43,8 @@
     @media (max-width: 1024px) {
       html, body { height:auto; min-height:100vh; overflow-x:hidden; overflow-y:auto; }
       body { background:#f6f8f7; }
+    .scroll-safe { min-height:0; overflow:auto; -webkit-overflow-scrolling:touch; }
+    .short-help { display:none !important; }
       .app-shell { height:auto !important; min-height:100vh; display:block !important; padding-bottom:82px; }
       .desktop-sidebar { display:none !important; }
       main { display:block !important; min-height:100vh; width:100%; overflow:visible !important; }
@@ -154,6 +158,24 @@
       .scan-buttons button { justify-content:center; }
     }
 
+
+    @media (min-width:1025px){
+      .page { height:100%; overflow:auto; }
+      #page-sales.page { overflow:hidden; }
+    }
+    @media (max-width:1024px){
+      .page { height:auto !important; max-height:none !important; overflow:visible !important; }
+      .page:not(#page-sales) { padding-bottom:96px !important; }
+      .cart-panel { overflow:hidden !important; }
+      .cart-panel > div:nth-child(2) { overflow-y:auto !important; -webkit-overflow-scrolling:touch; }
+      .cart-panel > div { flex-shrink:0; }
+      .cart-panel > div:nth-child(2) { flex:1 1 auto; min-height:0; }
+      #scanner-modal, #barcode-modal, #success-modal, #preview-modal { overflow:auto; -webkit-overflow-scrolling:touch; }
+      #scanner-modal > div, #barcode-modal > div, #success-modal > div, #preview-modal > div { max-height:92dvh; overflow:auto; }
+      .products-panel { padding-bottom:110px !important; }
+      .bg-white.rounded-3xl.card-shadow.overflow-hidden { overflow:visible !important; }
+    }
+
     #print-area { display:none; }
     body.printing #print-area { display:block; }
     @media print {
@@ -200,7 +222,7 @@
           </div>
           <div>
             <h1 id="side-store-name" class="text-xl font-bold text-primary">งามตา SHOP</h1>
-            <p class="sidebar-subtitle text-xs text-gray-400">ระบบขายหน้าร้าน</p>
+            <p class="sidebar-subtitle text-xs text-gray-400">POS</p>
           </div>
         </div>
       </div>
@@ -257,7 +279,7 @@
         </div>
       </header>
 
-      <section id="page-sales" class="page active flex-1 overflow-hidden">
+      <section id="page-sales" class="page active flex-1 overflow-hidden scroll-safe">
         <div class="sales-wrap h-full flex overflow-hidden">
           <div class="products-panel flex-1 p-5 overflow-hidden flex flex-col">
             <div class="search-row flex gap-3 mb-4">
@@ -369,12 +391,12 @@
         </div>
       </section>
 
-      <section id="page-history" class="page flex-1 overflow-y-auto p-6"></section>
-      <section id="page-products" class="page flex-1 overflow-y-auto p-6"></section>
-      <section id="page-stock" class="page flex-1 overflow-y-auto p-6"></section>
-      <section id="page-returns" class="page flex-1 overflow-y-auto p-6"></section>
-      <section id="page-reports" class="page flex-1 overflow-y-auto p-6"></section>
-      <section id="page-settings" class="page flex-1 overflow-y-auto p-6"></section>
+      <section id="page-history" class="page flex-1 overflow-y-auto p-6 scroll-safe"></section>
+      <section id="page-products" class="page flex-1 overflow-y-auto p-6 scroll-safe"></section>
+      <section id="page-stock" class="page flex-1 overflow-y-auto p-6 scroll-safe"></section>
+      <section id="page-returns" class="page flex-1 overflow-y-auto p-6 scroll-safe"></section>
+      <section id="page-reports" class="page flex-1 overflow-y-auto p-6 scroll-safe"></section>
+      <section id="page-settings" class="page flex-1 overflow-y-auto p-6 scroll-safe"></section>
     </main>
   </div>
 
@@ -877,7 +899,7 @@ function pageTitle(title, sub=''){
 function renderHistoryPage(){
   const box = document.getElementById('page-history');
   const bills = [...db.bills].reverse();
-  box.innerHTML = pageTitle('ประวัติบิล','ค้นหา ตรวจสอบ และพิมพ์บิลย้อนหลัง') + `
+  box.innerHTML = pageTitle('ประวัติบิล','ดูและพิมพ์บิล') + `
     <div class="bg-white rounded-3xl card-shadow overflow-hidden">
       <table class="responsive-table w-full text-left">
         <thead class="bg-gray-50 text-gray-500">
@@ -1027,30 +1049,30 @@ function renderPrintBarcodes(){
 
 function renderProductsPage(){
   const box = document.getElementById('page-products');
-  box.innerHTML = pageTitle('จัดการสินค้าเสื้อผ้า','เพิ่มสินค้า แยกประเภท ไซซ์ สี และสร้างบาร์โค้ด CODE128') + `
+  box.innerHTML = pageTitle('จัดการสินค้าเสื้อผ้า','เพิ่มสินค้าและบาร์โค้ด') + `
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
       <form onsubmit="saveProduct(event)" class="bg-white rounded-3xl card-shadow p-5 space-y-3">
-        <h3 class="text-xl font-bold">เพิ่ม/แก้ไขสินค้า</h3><p class="text-sm text-gray-500">กรอกต้นทุนเพื่อคำนวณกำไรในรายงาน</p>
+        <h3 class="text-xl font-bold">เพิ่ม/แก้ไขสินค้า</h3>
         <div class="grid grid-cols-2 gap-2">
-          <input id="product-id" placeholder="รหัสสินค้า เช่น TSH-BLK-M" class="w-full p-3 soft-border rounded-xl">
+          <input id="product-id" placeholder="รหัสสินค้า" class="w-full p-3 soft-border rounded-xl">
           <button type="button" onclick="generateProductCode()" class="bg-gray-100 rounded-xl font-semibold">สร้างรหัส</button>
         </div>
         <div>
           <label class="text-sm font-semibold text-gray-600">บาร์โค้ดสินค้า</label>
           <div class="grid grid-cols-2 gap-2 mt-1">
-            <input id="product-barcode" placeholder="สแกน/พิมพ์บาร์โค้ดเดิม หรือเว้นว่างไว้" class="w-full p-3 soft-border rounded-xl">
+            <input id="product-barcode" placeholder="บาร์โค้ด" class="w-full p-3 soft-border rounded-xl">
             <button type="button" onclick="generateBarcode()" class="bg-primary text-white rounded-xl font-semibold">สร้างใหม่</button>
           </div>
-          <p class="text-xs text-gray-400 mt-1">ถ้าสินค้ามีบาร์โค้ดจากโรงงานอยู่แล้ว ให้สแกนหรือพิมพ์ลงช่องนี้ ไม่ต้องกดสร้างใหม่</p>
+          
         </div>
-        <input id="product-name" placeholder="ชื่อสินค้า เช่น เสื้อยืด Basic" class="w-full p-3 soft-border rounded-xl">
+        <input id="product-name" placeholder="ชื่อสินค้า" class="w-full p-3 soft-border rounded-xl">
         <div class="grid grid-cols-2 gap-2">
-          <input id="product-type" placeholder="ประเภท เช่น เสื้อ / กางเกง" class="w-full p-3 soft-border rounded-xl">
-          <input id="product-cat" placeholder="หมวดหมู่ เช่น เสื้อยืด / ยีนส์" class="w-full p-3 soft-border rounded-xl">
+          <input id="product-type" placeholder="ประเภท" class="w-full p-3 soft-border rounded-xl">
+          <input id="product-cat" placeholder="หมวดหมู่" class="w-full p-3 soft-border rounded-xl">
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <input id="product-size" placeholder="ไซซ์ เช่น S / M / L / Free Size" class="w-full p-3 soft-border rounded-xl">
-          <input id="product-color" placeholder="สี เช่น ดำ / ขาว / ครีม" class="w-full p-3 soft-border rounded-xl">
+          <input id="product-size" placeholder="ไซซ์" class="w-full p-3 soft-border rounded-xl">
+          <input id="product-color" placeholder="สี" class="w-full p-3 soft-border rounded-xl">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <input id="product-price" type="number" placeholder="ราคาขาย" class="w-full p-3 soft-border rounded-xl">
@@ -1154,7 +1176,7 @@ function renderStockPage(){
   );
 
   const box = document.getElementById('page-stock');
-  box.innerHTML = pageTitle('สต๊อกสินค้าเสื้อผ้า','ตรวจสอบตามประเภทสินค้าและไซซ์') + `
+  box.innerHTML = pageTitle('สต๊อกสินค้าเสื้อผ้า','ดูสต๊อกตามประเภท/ไซซ์') + `
     <div class="bg-white rounded-3xl card-shadow p-4 mb-5 flex flex-wrap gap-3 items-center">
       <div>
         <label class="text-sm text-gray-500">ประเภทสินค้า</label>
@@ -1205,7 +1227,7 @@ function adjustStock(id){
 
 function renderReturnsPage(){
   const box = document.getElementById('page-returns');
-  box.innerHTML = pageTitle('เปลี่ยน/คืนสินค้า','ค้นหาเลขที่บิลเพื่อคืนสินค้าเข้าสต๊อกและบันทึกประวัติ') + `
+  box.innerHTML = pageTitle('เปลี่ยน/คืนสินค้า','ค้นหาบิลเพื่อคืน/เปลี่ยน') + `
     <div class="bg-white rounded-3xl card-shadow p-5 mb-5">
       <div class="flex gap-3">
         <input id="return-bill-input" placeholder="กรอกเลขที่บิล เช่น INV-20260629-0001" class="flex-1 p-4 soft-border rounded-2xl text-lg">
@@ -1298,7 +1320,7 @@ function renderReportsPage(){
   const activePeriod = localStorage.getItem(KEY+'_report_period') || 'today';
   const data = calcReport(activePeriod);
   const lowStock = db.products.filter(p => (p.stock||0) <= 5).sort((a,b)=>a.stock-b.stock).slice(0,8);
-  document.getElementById('page-reports').innerHTML = pageTitle('รายงานกำไรและยอดขาย','แยกดูได้ตาม วันนี้ / สัปดาห์นี้ / เดือนนี้ / ปีนี้') + `
+  document.getElementById('page-reports').innerHTML = pageTitle('รายงานกำไรและยอดขาย','เลือกช่วงเวลารายงาน') + `
     <div class="bg-white rounded-3xl card-shadow p-3 mb-5 flex flex-wrap gap-2">
       ${['today','week','month','year'].map(p=>`
         <button onclick="setReportPeriod('${p}')" class="px-4 py-3 rounded-2xl font-bold ${activePeriod===p?'bg-primary text-white':'bg-gray-100 text-gray-600'}">${periodLabel(p)}</button>
@@ -1307,7 +1329,7 @@ function renderReportsPage(){
 
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
       <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">ยอดขาย${periodLabel(activePeriod)}</p><h3 class="text-3xl font-bold text-primary">${money(data.sales)}</h3></div>
-      <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">กำไรสุทธิประมาณการ</p><h3 class="text-3xl font-bold">${money(data.profit)}</h3><p class="text-xs text-gray-400 mt-1">คิดจากราคาขาย - ต้นทุน - ส่วนลด</p></div>
+      <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">กำไรสุทธิประมาณการ</p><h3 class="text-3xl font-bold">${money(data.profit)}</h3><p class="text-xs text-gray-400 mt-1">หลังหักต้นทุนและส่วนลด</p></div>
       <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">ต้นทุนสินค้า</p><h3 class="text-3xl font-bold">${money(data.cost)}</h3></div>
       <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">จำนวนบิล / ชิ้น</p><h3 class="text-3xl font-bold">${data.bills.length} บิล</h3><p class="text-gray-500">${data.qty} ชิ้น</p></div>
     </div>
@@ -1342,7 +1364,7 @@ function setReportPeriod(period){
   renderReportsPage();
 }
 function renderSettingsPage(){
-  document.getElementById('page-settings').innerHTML = pageTitle('ตั้งค่าระบบ','ตั้งค่าชื่อร้าน ผู้ขาย และข้อความท้ายใบเสร็จ') + `
+  document.getElementById('page-settings').innerHTML = pageTitle('ตั้งค่าระบบ','ตั้งค่าร้าน') + `
     <form onsubmit="saveSettings(event)" class="bg-white rounded-3xl card-shadow p-6 max-w-xl space-y-3">
       <label class="font-semibold">ชื่อร้าน</label>
       <input id="set-store" value="${db.settings.storeName}" class="w-full p-4 soft-border rounded-2xl">
