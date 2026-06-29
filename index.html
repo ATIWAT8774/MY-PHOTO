@@ -176,6 +176,64 @@
       .bg-white.rounded-3xl.card-shadow.overflow-hidden { overflow:visible !important; }
     }
 
+
+    /* FINAL RESPONSIVE FIX: use mobile side drawer, no bottom nav */
+    @media (max-width:1024px){
+      .bottom-nav { display:none !important; }
+      .app-shell { padding-bottom:0 !important; }
+      .mobile-menu-btn { display:flex !important; }
+      .desktop-sidebar {
+        display:flex !important;
+        position:fixed;
+        top:0;
+        left:0;
+        bottom:0;
+        width:280px !important;
+        z-index:80;
+        transform:translateX(-105%);
+        transition:transform .25s ease;
+      }
+      .desktop-sidebar.open { transform:translateX(0); }
+      .desktop-sidebar .sidebar-text, .desktop-sidebar .sidebar-subtitle { display:inline !important; }
+      .desktop-sidebar nav button { justify-content:flex-start !important; padding-left:16px !important; padding-right:16px !important; }
+      .drawer-backdrop {
+        display:none;
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,.4);
+        z-index:75;
+      }
+      .drawer-backdrop.open { display:block; }
+      .top-header {
+        min-height:64px;
+        display:flex !important;
+        align-items:center !important;
+      }
+      .top-title-wrap { min-width:0; }
+      .top-title-wrap h2 { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      main { height:auto !important; min-height:100dvh !important; overflow:visible !important; display:block !important; }
+      .page { display:none; width:100%; min-height:calc(100dvh - 64px) !important; height:auto !important; overflow:visible !important; }
+      .page.active { display:block !important; }
+      #page-sales { overflow:visible !important; }
+      .sales-wrap { display:block !important; height:auto !important; min-height:0 !important; overflow:visible !important; }
+      .products-panel { display:block !important; min-height:0 !important; height:auto !important; overflow:visible !important; padding:12px !important; padding-bottom:20px !important; }
+      .product-scroll { height:auto !important; min-height:0 !important; max-height:none !important; overflow:visible !important; }
+      .mobile-cart-fab { bottom:18px !important; right:14px !important; z-index:65 !important; }
+      .cart-panel {
+        top:0 !important;
+        bottom:0 !important;
+        height:100dvh !important;
+        max-height:100dvh !important;
+      }
+      body.drawer-open { overflow:hidden !important; }
+      body.cart-open { overflow:hidden !important; }
+      .page.scroll-safe { overflow:visible !important; }
+    }
+    @media (min-width:1025px){
+      .mobile-menu-btn { display:none !important; }
+      .drawer-backdrop { display:none !important; }
+    }
+
     #print-area { display:none; }
     body.printing #print-area { display:block; }
     @media print {
@@ -257,12 +315,18 @@
         </button>
       </div>
     </aside>
+    <div id="drawer-backdrop" class="drawer-backdrop no-print" onclick="closeDrawer()"></div>
 
     <main class="flex-1 flex flex-col min-w-0">
       <header class="top-header bg-white card-shadow px-6 py-3 flex items-center justify-between shrink-0 no-print">
-        <div>
-          <h2 id="top-store-name" class="font-bold text-xl">งามตา SHOP</h2>
-          <p id="datetime-display" class="text-sm text-gray-500"></p>
+        <div class="flex items-center gap-3 min-w-0">
+          <button onclick="openDrawer()" class="mobile-menu-btn hidden w-11 h-11 rounded-2xl bg-primary text-white items-center justify-center shrink-0">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+          </button>
+          <div class="top-title-wrap">
+            <h2 id="top-store-name" class="font-bold text-xl">งามตา SHOP</h2>
+            <p id="datetime-display" class="text-sm text-gray-500"></p>
+          </div>
         </div>
         <div class="flex items-center gap-3">
           <div class="bg-primary-soft px-4 py-2 rounded-2xl flex items-center gap-2">
@@ -436,16 +500,10 @@
   
   <button onclick="openMobileCart()" class="mobile-cart-fab btn-touch bg-primary text-white rounded-full px-5 py-3 items-center gap-2 font-bold card-shadow no-print">
     <i data-lucide="shopping-cart" class="w-5 h-5"></i>
-    <span id="mobile-cart-count">0</span>
+    <span>ตะกร้า</span><span id="mobile-cart-count" class="bg-white text-primary rounded-full px-2">0</span>
   </button>
 
-  <nav class="bottom-nav no-print">
-    <button data-page="sales" class="bottom-btn active"><i data-lucide="shopping-cart"></i><span>ขาย</span></button>
-    <button onclick="openMobileCart()"><i data-lucide="shopping-bag"></i><span>ตะกร้า</span></button>
-    <button data-page="history" class="bottom-btn"><i data-lucide="receipt"></i><span>บิล</span></button>
-    <button data-page="products" class="bottom-btn"><i data-lucide="package"></i><span>สินค้า</span></button>
-    <button data-page="reports" class="bottom-btn"><i data-lucide="bar-chart-3"></i><span>รายงาน</span></button>
-  </nav>
+<!-- bottom nav removed: using mobile side drawer -->
 
 
   <div id="barcode-modal" class="hidden fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4 no-print">
@@ -533,6 +591,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderProducts();
   renderCart();
   closeMobileCart();
+  closeDrawer();
   document.querySelectorAll('.bottom-btn').forEach(b=>b.classList.toggle('active', b.dataset.page===page));
   renderAllPages();
 });
@@ -739,11 +798,29 @@ function addProductByCode(code){
 
 function openMobileCart(){
   const panel = document.getElementById('cart-panel');
-  if(panel && window.innerWidth <= 1024) panel.classList.add('open');
+  if(panel && window.innerWidth <= 1024){
+    panel.classList.add('open');
+    document.body.classList.add('cart-open');
+  }
 }
 function closeMobileCart(){
   const panel = document.getElementById('cart-panel');
   if(panel) panel.classList.remove('open');
+  document.body.classList.remove('cart-open');
+}
+function openDrawer(){
+  const side = document.querySelector('.desktop-sidebar');
+  const backdrop = document.getElementById('drawer-backdrop');
+  if(side) side.classList.add('open');
+  if(backdrop) backdrop.classList.add('open');
+  document.body.classList.add('drawer-open');
+}
+function closeDrawer(){
+  const side = document.querySelector('.desktop-sidebar');
+  const backdrop = document.getElementById('drawer-backdrop');
+  if(side) side.classList.remove('open');
+  if(backdrop) backdrop.classList.remove('open');
+  document.body.classList.remove('drawer-open');
 }
 
 async function openCameraScanner(){
