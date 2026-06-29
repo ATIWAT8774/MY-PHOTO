@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MiniMart POS - ระบบขายหน้าร้าน</title>
+  <title>งามตา SHOP - ระบบขายหน้าร้าน</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -39,44 +39,69 @@
     .mobile-cart-fab { display:none; }
 
     @media (max-width: 1024px) {
-      body { height:auto; min-height:100vh; overflow:auto; }
-      .app-shell { height:auto; min-height:100vh; display:block; padding-bottom:76px; }
-      .desktop-sidebar { display:none; }
-      .top-header { position:sticky; top:0; z-index:30; padding:12px 14px; }
-      .top-header .header-meta { display:none; }
-      main { min-height:100vh; }
-      #page-sales { height:auto; overflow:visible; }
-      .sales-wrap { height:auto; display:block; overflow:visible; }
-      .products-panel { padding:12px; overflow:visible; }
-      .product-scroll { overflow:visible; }
-      #products-container { grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px; }
+      html, body { height:auto; min-height:100vh; overflow-x:hidden; overflow-y:auto; }
+      body { background:#f6f8f7; }
+      .app-shell { height:auto !important; min-height:100vh; display:block !important; padding-bottom:82px; }
+      .desktop-sidebar { display:none !important; }
+      main { display:block !important; min-height:100vh; width:100%; overflow:visible !important; }
+      .top-header { position:sticky; top:0; z-index:30; padding:10px 12px; align-items:flex-start; gap:8px; }
+      .top-header h2 { font-size:18px; line-height:1.25; }
+      .top-header p { font-size:11px; }
+      .top-header .header-meta { display:none !important; }
+
+      .page { min-height:calc(100vh - 74px); overflow:visible !important; padding:12px !important; }
+      #page-sales { padding:0 !important; height:auto !important; }
+      .sales-wrap { height:auto !important; display:block !important; overflow:visible !important; }
+      .products-panel { padding:12px !important; overflow:visible !important; display:block !important; }
+      .product-scroll { overflow:visible !important; padding-right:0 !important; }
+      #products-container { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px; }
+      .product-card { border-radius:22px !important; padding:10px !important; }
+      .product-card .aspect-square { border-radius:16px !important; margin-bottom:8px !important; }
+      .product-card .product-name { font-size:14px; }
+      .product-card .product-price { font-size:18px; }
+      .product-card p { line-height:1.25; }
+
+      .search-row { flex-direction:column; gap:8px !important; margin-bottom:10px !important; }
+      .search-row input { padding-top:13px !important; padding-bottom:13px !important; font-size:15px !important; }
+      .scan-buttons { display:grid !important; grid-template-columns:1fr 1fr; width:100%; gap:8px; }
+      .scan-buttons button { justify-content:center; padding-left:8px !important; padding-right:8px !important; font-size:14px; }
+      #category-filters { margin-bottom:10px !important; padding-bottom:6px; }
+      #category-filters button { padding:9px 12px; font-size:13px; }
+
       .cart-panel {
-        position:fixed;
-        inset:0;
+        position:fixed !important;
+        inset:0 !important;
         width:100% !important;
-        z-index:50;
+        height:100dvh !important;
+        z-index:55;
         transform:translateX(100%);
         transition:transform .25s ease;
+        border-radius:0 !important;
       }
       .cart-panel.open { transform:translateX(0); }
+      #cart-items { max-height:none; }
+      .cart-panel input, .cart-panel select, .cart-panel button { font-size:15px; }
+      #net-total { font-size:26px !important; }
+
       .mobile-cart-fab {
-        display:flex;
+        display:flex !important;
         position:fixed;
         right:14px;
         bottom:88px;
-        z-index:40;
+        z-index:44;
       }
       .bottom-nav {
-        display:grid;
+        display:grid !important;
         position:fixed;
         left:0;
         right:0;
         bottom:0;
-        z-index:45;
+        z-index:60;
         grid-template-columns:repeat(5,1fr);
         background:#fff;
         border-top:1px solid #e5e7eb;
         box-shadow:0 -8px 24px rgba(15,23,42,.08);
+        padding-bottom:env(safe-area-inset-bottom);
       }
       .bottom-nav button {
         padding:9px 2px 8px;
@@ -89,13 +114,26 @@
       }
       .bottom-nav button.active { color:#16a34a; font-weight:700; }
       .bottom-nav i { width:20px; height:20px; }
+
       table.responsive-table, table.responsive-table thead, table.responsive-table tbody, table.responsive-table tr, table.responsive-table td, table.responsive-table th {
         display:block;
       }
       table.responsive-table thead { display:none; }
-      table.responsive-table tr { padding:12px; border-top:1px solid #e5e7eb; }
-      table.responsive-table td { padding:4px 0; }
-      .mobile-stack { grid-template-columns:1fr !important; }
+      table.responsive-table tr {
+        margin:10px 0;
+        padding:14px;
+        border:1px solid #e5e7eb !important;
+        border-radius:20px;
+        background:#fff;
+      }
+      table.responsive-table td { padding:5px 0 !important; text-align:left !important; }
+      .mobile-stack, .grid.mobile-stack { grid-template-columns:1fr !important; }
+
+      .rounded-3xl { border-radius:22px; }
+      .p-6 { padding:16px; }
+      .text-3xl { font-size:24px; }
+      .text-2xl { font-size:22px; }
+      .modal-card-mobile { max-height:90dvh; overflow:auto; }
     }
 
     @media (min-width: 1025px) and (max-width: 1280px) {
@@ -116,12 +154,37 @@
       .scan-buttons button { justify-content:center; }
     }
 
+    #print-area { display:none; }
+    body.printing #print-area { display:block; }
     @media print {
-      body * { visibility:hidden; }
-      #print-area, #print-area * { visibility:visible; }
-      #print-area { position:absolute; left:0; top:0; width:80mm; background:white; padding:8px; }
-      .barcode-print-sheet { width:100%; }
-      .barcode-label { page-break-inside:avoid; border:1px dashed #999; padding:6px; margin:4px 0; text-align:center; }
+      @page { margin: 4mm; }
+      html, body { background:#fff !important; height:auto !important; overflow:visible !important; }
+      body * { visibility:hidden !important; }
+      #print-area, #print-area * { visibility:visible !important; }
+      #print-area {
+        display:block !important;
+        position:absolute;
+        left:0;
+        top:0;
+        width:80mm;
+        max-width:80mm;
+        background:white;
+        color:#111;
+        padding:6px;
+        font-size:12px;
+      }
+      .receipt-print { width:72mm; margin:0 auto; }
+      .barcode-print-sheet { width:72mm; margin:0 auto; }
+      .barcode-label {
+        page-break-inside:avoid;
+        break-inside:avoid;
+        border:1px dashed #999;
+        padding:6px;
+        margin:4px 0;
+        text-align:center;
+        width:68mm;
+      }
+      .barcode-label svg { max-width:100%; }
       .no-print { display:none !important; }
     }
   </style>
@@ -136,7 +199,7 @@
             <i data-lucide="store"></i>
           </div>
           <div>
-            <h1 id="side-store-name" class="text-xl font-bold text-primary">MiniMart POS</h1>
+            <h1 id="side-store-name" class="text-xl font-bold text-primary">งามตา SHOP</h1>
             <p class="sidebar-subtitle text-xs text-gray-400">ระบบขายหน้าร้าน</p>
           </div>
         </div>
@@ -176,7 +239,7 @@
     <main class="flex-1 flex flex-col min-w-0">
       <header class="top-header bg-white card-shadow px-6 py-3 flex items-center justify-between shrink-0 no-print">
         <div>
-          <h2 id="top-store-name" class="font-bold text-xl">MiniMart POS</h2>
+          <h2 id="top-store-name" class="font-bold text-xl">งามตา SHOP</h2>
           <p id="datetime-display" class="text-sm text-gray-500"></p>
         </div>
         <div class="flex items-center gap-3">
@@ -316,7 +379,7 @@
   </div>
 
   <div id="success-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 no-print">
-    <div class="bg-white rounded-3xl p-8 max-w-md w-full text-center card-shadow">
+    <div class="modal-card-mobile bg-white rounded-3xl p-8 max-w-md w-full text-center card-shadow">
       <div class="w-16 h-16 bg-primary-soft rounded-full flex items-center justify-center mx-auto mb-4">
         <i data-lucide="check" class="w-8 h-8 text-primary"></i>
       </div>
@@ -338,7 +401,7 @@
   </div>
 
   <div id="preview-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 no-print">
-    <div class="bg-white rounded-3xl p-6 max-w-md w-full card-shadow">
+    <div class="modal-card-mobile bg-white rounded-3xl p-6 max-w-md w-full card-shadow">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-xl font-bold">ตัวอย่างใบเสร็จ</h3>
         <button onclick="closePreview()" class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center"><i data-lucide="x"></i></button>
@@ -364,7 +427,7 @@
 
 
   <div id="barcode-modal" class="hidden fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4 no-print">
-    <div class="bg-white rounded-3xl p-6 max-w-md w-full card-shadow">
+    <div class="modal-card-mobile bg-white rounded-3xl p-6 max-w-md w-full card-shadow">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-xl font-bold">บาร์โค้ดสินค้า</h3>
         <button onclick="closeBarcodeModal()" class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center"><i data-lucide="x"></i></button>
@@ -375,7 +438,7 @@
   </div>
 
   <div id="scanner-modal" class="hidden fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4 no-print">
-    <div class="bg-white rounded-3xl p-5 max-w-lg w-full card-shadow">
+    <div class="modal-card-mobile bg-white rounded-3xl p-5 max-w-lg w-full card-shadow">
       <div class="flex items-center justify-between mb-4">
         <div>
           <h3 class="text-xl font-bold">สแกนบาร์โค้ดด้วยกล้อง</h3>
@@ -389,13 +452,13 @@
   </div>
 
 <div id="toast" class="hidden fixed bottom-5 right-5 bg-ink text-white px-5 py-3 rounded-2xl card-shadow z-[60] no-print"></div>
-  <div id="print-area" class="hidden"></div>
+  <div id="print-area"></div>
 
 <script>
-const KEY = 'modern_green_pos_v1';
+const KEY = 'ngamta_shop_pos_v2';
 
 const defaultData = {
-  settings: { storeName:'MiniMart POS', cashier:'แอดมิน', receiptFooter:'ขอบคุณที่ใช้บริการ' },
+  settings: { storeName:'งามตา SHOP', cashier:'แอดมิน', receiptFooter:'ขอบคุณที่ใช้บริการ' },
   products: [
     { id:'TSH-BASIC-BLK-S', barcode:'240001000101', name:'เสื้อยืด Basic', type:'เสื้อ', size:'S', color:'ดำ', price:199, cost:120, stock:10, cat:'เสื้อยืด', img:'https://images.pexels.com/photos/8532616/pexels-photo-8532616.jpeg?auto=compress&cs=tinysrgb&w=400' },
     { id:'TSH-BASIC-BLK-M', barcode:'240001000102', name:'เสื้อยืด Basic', type:'เสื้อ', size:'M', color:'ดำ', price:199, cost:120, stock:8, cat:'เสื้อยืด', img:'https://images.pexels.com/photos/8532616/pexels-photo-8532616.jpeg?auto=compress&cs=tinysrgb&w=400' },
@@ -748,7 +811,7 @@ function holdBill(){
 function receiptHTML(bill){
   if(!bill) return '';
   return `
-    <div style="font-family:monospace; color:#111;">
+    <div class="receipt-print" style="font-family:monospace; color:#111; width:72mm; line-height:1.35;">
       <div style="text-align:center; font-weight:bold; font-size:16px;">${db.settings.storeName}</div>
       <div style="text-align:center;">ใบเสร็จรับเงิน</div>
       <hr>
@@ -776,13 +839,27 @@ function previewReceipt(){
   document.getElementById('preview-modal').classList.remove('hidden');
 }
 function closePreview(){ document.getElementById('preview-modal').classList.add('hidden'); }
+function safePrint(htmlContent, afterPrint){
+  const area = document.getElementById('print-area');
+  area.innerHTML = htmlContent;
+  document.body.classList.add('printing');
+
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => {
+      document.body.classList.remove('printing');
+      area.innerHTML = '';
+      if(typeof afterPrint === 'function') afterPrint();
+    }, 500);
+  }, 250);
+}
+
 function printReceipt(){
-  if(!lastBill) return;
-  document.getElementById('print-area').innerHTML = receiptHTML(lastBill);
-  document.getElementById('print-area').classList.remove('hidden');
-  window.print();
-  document.getElementById('print-area').classList.add('hidden');
-  closeSuccess(); closePreview();
+  if(!lastBill) return showToast('ยังไม่มีบิลสำหรับพิมพ์');
+  safePrint(receiptHTML(lastBill), () => {
+    closeSuccess();
+    closePreview();
+  });
 }
 
 function renderAllPages(){
@@ -863,11 +940,23 @@ function generateProductCode(){
 function renderSingleBarcodePreview(code){
   const wrap = document.getElementById('single-barcode-preview');
   const svg = document.getElementById('single-barcode-svg');
-  if(!wrap || !svg || !code || !window.JsBarcode) return;
+  if(!wrap || !svg) return;
+  if(!code){
+    wrap.classList.add('hidden');
+    svg.innerHTML = '';
+    return;
+  }
+  if(!window.JsBarcode){
+    wrap.classList.remove('hidden');
+    wrap.innerHTML = '<p class="text-sm text-gray-400">โหลดตัวสร้างบาร์โค้ดไม่ได้</p><svg id="single-barcode-svg"></svg>';
+    return;
+  }
   wrap.classList.remove('hidden');
   try{
     JsBarcode(svg, code, { format:'CODE128', width:2, height:56, displayValue:true, fontSize:14, margin:8 });
-  }catch(e){}
+  }catch(e){
+    wrap.innerHTML = '<p class="text-sm text-red-500">รูปแบบบาร์โค้ดไม่ถูกต้อง</p><svg id="single-barcode-svg"></svg>';
+  }
 }
 let currentBarcodeProduct = null;
 function showBarcode(id){
@@ -878,16 +967,15 @@ function showBarcode(id){
   box.innerHTML = `
     <p class="font-bold">${p.name}</p>
     <p class="text-sm text-gray-500 mb-2">${p.type || '-'} | ไซซ์ ${p.size || '-'} | สี ${p.color || '-'}</p>
-    <svg id="barcode-modal-svg"></svg>
-    <p class="text-sm font-mono mt-2">${p.barcode || '-'}</p>
+    ${p.barcode ? '<svg id="barcode-modal-svg"></svg><p class="text-sm font-mono mt-2">'+p.barcode+'</p>' : '<div class="bg-white rounded-2xl p-5 text-gray-400">สินค้านี้ยังไม่มีบาร์โค้ด</div>'}
   `;
   document.getElementById('barcode-modal').classList.remove('hidden');
   lucide.createIcons();
   setTimeout(()=>{
     if(window.JsBarcode && p.barcode){
-      JsBarcode('#barcode-modal-svg', p.barcode, { format:'CODE128', width:2, height:64, displayValue:true, fontSize:14, margin:8 });
+      try{ JsBarcode('#barcode-modal-svg', p.barcode, { format:'CODE128', width:2, height:64, displayValue:true, fontSize:14, margin:8 }); }catch(e){ showToast('รูปแบบบาร์โค้ดไม่ถูกต้อง'); }
     }
-  },0);
+  },80);
 }
 function closeBarcodeModal(){
   document.getElementById('barcode-modal').classList.add('hidden');
@@ -897,27 +985,37 @@ function barcodeLabelHTML(p, qty=1){
     <div class="barcode-label">
       <div style="font-weight:bold; font-size:12px;">${p.name}</div>
       <div style="font-size:11px;">${p.type || '-'} | ไซซ์ ${p.size || '-'} | สี ${p.color || '-'}</div>
-      <svg class="print-barcode" data-code="${p.barcode || ''}"></svg>
-      <div style="font-size:11px;">${p.barcode || ''}</div>
+      ${p.barcode ? `<svg class="print-barcode" data-code="${p.barcode}"></svg><div style="font-size:11px;">${p.barcode}</div>` : `<div style="font-size:12px; padding:12px 0;">ไม่มีบาร์โค้ด</div>`}
       <div style="font-size:12px; font-weight:bold;">${money(p.price)}</div>
     </div>
   `).join('');
 }
 function printCurrentBarcode(){
-  if(!currentBarcodeProduct) return;
-  document.getElementById('print-area').innerHTML = `<div class="barcode-print-sheet">${barcodeLabelHTML(currentBarcodeProduct, 1)}</div>`;
-  document.getElementById('print-area').classList.remove('hidden');
-  renderPrintBarcodes();
-  window.print();
-  document.getElementById('print-area').classList.add('hidden');
+  if(!currentBarcodeProduct) return showToast('ยังไม่ได้เลือกสินค้า');
+  if(!currentBarcodeProduct.barcode) return showToast('สินค้านี้ยังไม่มีบาร์โค้ด');
+  const content = `<div class="barcode-print-sheet">${barcodeLabelHTML(currentBarcodeProduct, 1)}</div>`;
+  printBarcodeContent(content);
 }
 function printAllBarcodes(){
-  const html = db.products.map(p => barcodeLabelHTML(p, Math.max(1, Number(p.stock)||1))).join('');
-  document.getElementById('print-area').innerHTML = `<div class="barcode-print-sheet">${html}</div>`;
-  document.getElementById('print-area').classList.remove('hidden');
-  renderPrintBarcodes();
-  window.print();
-  document.getElementById('print-area').classList.add('hidden');
+  const printable = db.products.filter(p => p.barcode);
+  if(!printable.length) return showToast('ยังไม่มีสินค้าที่มีบาร์โค้ด');
+  const html = printable.map(p => barcodeLabelHTML(p, Math.max(1, Number(p.stock)||1))).join('');
+  printBarcodeContent(`<div class="barcode-print-sheet">${html}</div>`);
+}
+function printBarcodeContent(content){
+  const area = document.getElementById('print-area');
+  area.innerHTML = content;
+  document.body.classList.add('printing');
+  setTimeout(() => {
+    renderPrintBarcodes();
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove('printing');
+        area.innerHTML = '';
+      }, 500);
+    }, 250);
+  }, 100);
 }
 function renderPrintBarcodes(){
   if(!window.JsBarcode) return;
@@ -932,14 +1030,18 @@ function renderProductsPage(){
   box.innerHTML = pageTitle('จัดการสินค้าเสื้อผ้า','เพิ่มสินค้า แยกประเภท ไซซ์ สี และสร้างบาร์โค้ด CODE128') + `
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
       <form onsubmit="saveProduct(event)" class="bg-white rounded-3xl card-shadow p-5 space-y-3">
-        <h3 class="text-xl font-bold">เพิ่ม/แก้ไขสินค้า</h3>
+        <h3 class="text-xl font-bold">เพิ่ม/แก้ไขสินค้า</h3><p class="text-sm text-gray-500">กรอกต้นทุนเพื่อคำนวณกำไรในรายงาน</p>
         <div class="grid grid-cols-2 gap-2">
           <input id="product-id" placeholder="รหัสสินค้า เช่น TSH-BLK-M" class="w-full p-3 soft-border rounded-xl">
           <button type="button" onclick="generateProductCode()" class="bg-gray-100 rounded-xl font-semibold">สร้างรหัส</button>
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <input id="product-barcode" placeholder="บาร์โค้ด" class="w-full p-3 soft-border rounded-xl">
-          <button type="button" onclick="generateBarcode()" class="bg-primary text-white rounded-xl font-semibold">สร้างบาร์โค้ด</button>
+        <div>
+          <label class="text-sm font-semibold text-gray-600">บาร์โค้ดสินค้า</label>
+          <div class="grid grid-cols-2 gap-2 mt-1">
+            <input id="product-barcode" placeholder="สแกน/พิมพ์บาร์โค้ดเดิม หรือเว้นว่างไว้" class="w-full p-3 soft-border rounded-xl">
+            <button type="button" onclick="generateBarcode()" class="bg-primary text-white rounded-xl font-semibold">สร้างใหม่</button>
+          </div>
+          <p class="text-xs text-gray-400 mt-1">ถ้าสินค้ามีบาร์โค้ดจากโรงงานอยู่แล้ว ให้สแกนหรือพิมพ์ลงช่องนี้ ไม่ต้องกดสร้างใหม่</p>
         </div>
         <input id="product-name" placeholder="ชื่อสินค้า เช่น เสื้อยืด Basic" class="w-full p-3 soft-border rounded-xl">
         <div class="grid grid-cols-2 gap-2">
@@ -967,16 +1069,16 @@ function renderProductsPage(){
           <button onclick="printAllBarcodes()" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold flex items-center gap-2"><i data-lucide="printer" class="w-4 h-4"></i>พิมพ์บาร์โค้ดทั้งหมด</button>
         </div>
         <table class="responsive-table w-full text-left">
-          <thead class="bg-gray-50 text-gray-500"><tr><th class="p-4">สินค้า</th><th>ประเภท/ไซซ์/สี</th><th>บาร์โค้ด</th><th>ราคา</th><th>สต๊อก</th><th class="text-right p-4">จัดการ</th></tr></thead>
+          <thead class="bg-gray-50 text-gray-500"><tr><th class="p-4">สินค้า</th><th>ประเภท/ไซซ์/สี</th><th>บาร์โค้ด</th><th>ต้นทุน/ขาย</th><th>กำไร/ชิ้น</th><th>สต๊อก</th><th class="text-right p-4">จัดการ</th></tr></thead>
           <tbody>
             ${db.products.map(p=>`
               <tr class="border-t border-gray-100">
                 <td class="p-4"><b>${p.name}</b><br><span class="text-sm text-gray-400">${p.id} | ${p.cat}</span></td>
                 <td>${p.type || '-'}<br><span class="text-sm text-gray-500">ไซซ์ ${p.size || '-'} | สี ${p.color || '-'}</span></td>
                 <td><span class="font-mono text-sm">${p.barcode || '-'}</span></td>
-                <td>${money(p.price)}</td><td>${p.stock}</td>
+                <td>${money(p.cost||0)}<br><span class="text-sm text-gray-500">ขาย ${money(p.price)}</span></td><td class="font-bold text-primary">${money((p.price||0)-(p.cost||0))}</td><td>${p.stock}</td>
                 <td class="p-4 text-right">
-                  <button onclick="showBarcode('${p.id}')" class="px-3 py-2 rounded-xl bg-primary-soft text-primary font-semibold">บาร์โค้ด</button>
+                  <button onclick="showBarcode('${p.id}')" class="px-3 py-2 rounded-xl bg-primary-soft text-primary font-semibold">${p.barcode ? "บาร์โค้ด" : "ไม่มีบาร์โค้ด"}</button>
                   <button onclick="editProduct('${p.id}')" class="px-3 py-2 rounded-xl bg-gray-100 font-semibold">แก้ไข</button>
                   <button onclick="deleteProduct('${p.id}')" class="px-3 py-2 rounded-xl bg-red-50 text-red-600 font-semibold">ลบ</button>
                 </td>
@@ -994,9 +1096,9 @@ function saveProduct(e){
     id = document.getElementById('product-id').value.trim();
   }
   let barcode = document.getElementById('product-barcode').value.trim();
-  if(!barcode){
-    barcode = makeBarcode();
-    document.getElementById('product-barcode').value = barcode;
+  // ไม่บังคับสร้างบาร์โค้ด: ถ้าสินค้ามีบาร์โค้ดเดิมให้ใส่เองได้ ถ้าเว้นว่างจะยังบันทึกสินค้าได้
+  if(barcode && db.products.some(x => x.id !== id && String(x.barcode || '') === barcode)){
+    return showToast('บาร์โค้ดนี้ถูกใช้กับสินค้าอื่นแล้ว');
   }
   const p = {
     id,
@@ -1144,24 +1246,100 @@ function processReturn(billNo, idx){
   saveDB(); renderProducts(); renderAllPages(); showToast('บันทึกการคืน/เปลี่ยนสินค้าแล้ว');
 }
 
-function renderReportsPage(){
-  const today = getTodayBills();
-  const sales = today.reduce((s,b)=>s+b.netTotal,0);
-  const profit = today.reduce((s,b)=>s + b.items.reduce((x,i)=>x+(i.price-(i.cost||0))*i.qty,0) - b.discount,0);
-  const count = today.length;
+function getPeriodRange(period){
+  const now = new Date();
+  const start = new Date(now);
+  const end = new Date(now);
+  end.setHours(23,59,59,999);
+
+  if(period === 'today'){
+    start.setHours(0,0,0,0);
+  } else if(period === 'week'){
+    const day = (now.getDay() + 6) % 7; // Monday = 0
+    start.setDate(now.getDate() - day);
+    start.setHours(0,0,0,0);
+  } else if(period === 'month'){
+    start.setDate(1);
+    start.setHours(0,0,0,0);
+  } else if(period === 'year'){
+    start.setMonth(0,1);
+    start.setHours(0,0,0,0);
+  }
+  return {start, end};
+}
+function periodLabel(period){
+  return period === 'today' ? 'วันนี้' : period === 'week' ? 'สัปดาห์นี้' : period === 'month' ? 'เดือนนี้' : 'ปีนี้';
+}
+function getBillsByPeriod(period){
+  const {start, end} = getPeriodRange(period);
+  return db.bills.filter(b => {
+    if(b.voided) return false;
+    const d = new Date(b.createdAt);
+    return d >= start && d <= end;
+  });
+}
+function calcReport(period){
+  const bills = getBillsByPeriod(period);
+  const sales = bills.reduce((s,b)=>s+(b.netTotal||0),0);
+  const cost = bills.reduce((s,b)=>s + b.items.reduce((x,i)=>x+((i.cost||0)*i.qty),0),0);
+  const grossBeforeDiscount = bills.reduce((s,b)=>s + b.items.reduce((x,i)=>x+(((i.price||0)-(i.cost||0))*i.qty),0),0);
+  const discount = bills.reduce((s,b)=>s+(b.discount||0),0);
+  const profit = grossBeforeDiscount - discount;
+  const qty = bills.reduce((s,b)=>s + b.items.reduce((x,i)=>x+i.qty,0),0);
   const items = {};
-  today.forEach(b=>b.items.forEach(i=>{ items[i.name]=(items[i.name]||0)+i.qty; }));
-  const best = Object.entries(items).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  document.getElementById('page-reports').innerHTML = pageTitle('รายงาน','สรุปยอดขายและกำไรประจำวัน') + `
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-      <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">ยอดขายวันนี้</p><h3 class="text-3xl font-bold text-primary">${money(sales)}</h3></div>
-      <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">กำไรประมาณการ</p><h3 class="text-3xl font-bold">${money(profit)}</h3></div>
-      <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">จำนวนบิล</p><h3 class="text-3xl font-bold">${count}</h3></div>
+  bills.forEach(b=>b.items.forEach(i=>{
+    const key = `${i.name} ${i.size ? 'ไซซ์ '+i.size : ''} ${i.color ? 'สี '+i.color : ''}`.trim();
+    items[key]=(items[key]||0)+i.qty;
+  }));
+  const best = Object.entries(items).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  return {bills, sales, cost, discount, profit, qty, best};
+}
+function renderReportsPage(){
+  const activePeriod = localStorage.getItem(KEY+'_report_period') || 'today';
+  const data = calcReport(activePeriod);
+  const lowStock = db.products.filter(p => (p.stock||0) <= 5).sort((a,b)=>a.stock-b.stock).slice(0,8);
+  document.getElementById('page-reports').innerHTML = pageTitle('รายงานกำไรและยอดขาย','แยกดูได้ตาม วันนี้ / สัปดาห์นี้ / เดือนนี้ / ปีนี้') + `
+    <div class="bg-white rounded-3xl card-shadow p-3 mb-5 flex flex-wrap gap-2">
+      ${['today','week','month','year'].map(p=>`
+        <button onclick="setReportPeriod('${p}')" class="px-4 py-3 rounded-2xl font-bold ${activePeriod===p?'bg-primary text-white':'bg-gray-100 text-gray-600'}">${periodLabel(p)}</button>
+      `).join('')}
     </div>
-    <div class="bg-white p-6 rounded-3xl card-shadow">
-      <h3 class="text-xl font-bold mb-3">สินค้าขายดีวันนี้</h3>
-      ${best.map(([name,qty])=>`<div class="flex justify-between border-t py-3"><span>${name}</span><b>${qty} ชิ้น</b></div>`).join('') || '<p class="text-gray-400">ยังไม่มีรายการขายวันนี้</p>'}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+      <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">ยอดขาย${periodLabel(activePeriod)}</p><h3 class="text-3xl font-bold text-primary">${money(data.sales)}</h3></div>
+      <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">กำไรสุทธิประมาณการ</p><h3 class="text-3xl font-bold">${money(data.profit)}</h3><p class="text-xs text-gray-400 mt-1">คิดจากราคาขาย - ต้นทุน - ส่วนลด</p></div>
+      <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">ต้นทุนสินค้า</p><h3 class="text-3xl font-bold">${money(data.cost)}</h3></div>
+      <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">จำนวนบิล / ชิ้น</p><h3 class="text-3xl font-bold">${data.bills.length} บิล</h3><p class="text-gray-500">${data.qty} ชิ้น</p></div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+      <div class="bg-white p-6 rounded-3xl card-shadow">
+        <h3 class="text-xl font-bold mb-3">สินค้าขายดี${periodLabel(activePeriod)}</h3>
+        ${data.best.map(([name,qty])=>`<div class="flex justify-between border-t py-3"><span>${name}</span><b>${qty} ชิ้น</b></div>`).join('') || '<p class="text-gray-400">ยังไม่มีรายการขายในช่วงนี้</p>'}
+      </div>
+      <div class="bg-white p-6 rounded-3xl card-shadow">
+        <h3 class="text-xl font-bold mb-3">สินค้าใกล้หมด</h3>
+        ${lowStock.map(p=>`<div class="flex justify-between border-t py-3"><span>${p.name} | ไซซ์ ${p.size || '-'} | สี ${p.color || '-'}</span><b class="${p.stock<=0?'text-red-600':'text-orange-500'}">${p.stock} ชิ้น</b></div>`).join('') || '<p class="text-gray-400">ไม่มีสินค้าใกล้หมด</p>'}
+      </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-3xl card-shadow mt-5">
+      <h3 class="text-xl font-bold mb-3">รายละเอียดบิล${periodLabel(activePeriod)}</h3>
+      <table class="responsive-table w-full text-left">
+        <thead class="bg-gray-50 text-gray-500"><tr><th class="p-4">เลขที่บิล</th><th>วันที่</th><th>ช่องทาง</th><th>ยอดขาย</th><th>กำไรประมาณการ</th></tr></thead>
+        <tbody>
+          ${data.bills.slice().reverse().map(b=>{
+            const billCost = b.items.reduce((s,i)=>s+((i.cost||0)*i.qty),0);
+            const billProfit = (b.netTotal||0) - billCost;
+            return `<tr class="border-t border-gray-100"><td class="p-4 font-semibold">${b.billNo}</td><td>${new Date(b.createdAt).toLocaleString('th-TH')}</td><td>${b.paymentText}</td><td class="font-bold text-primary">${money(b.netTotal)}</td><td class="font-bold">${money(billProfit)}</td></tr>`;
+          }).join('') || '<tr><td colspan="5" class="p-8 text-center text-gray-400">ยังไม่มีบิลในช่วงนี้</td></tr>'}
+        </tbody>
+      </table>
     </div>`;
+}
+function setReportPeriod(period){
+  localStorage.setItem(KEY+'_report_period', period);
+  renderReportsPage();
 }
 function renderSettingsPage(){
   document.getElementById('page-settings').innerHTML = pageTitle('ตั้งค่าระบบ','ตั้งค่าชื่อร้าน ผู้ขาย และข้อความท้ายใบเสร็จ') + `
@@ -1177,7 +1355,7 @@ function renderSettingsPage(){
 }
 function saveSettings(e){
   e.preventDefault();
-  db.settings.storeName = document.getElementById('set-store').value.trim() || 'MiniMart POS';
+  db.settings.storeName = document.getElementById('set-store').value.trim() || 'งามตา SHOP';
   db.settings.cashier = document.getElementById('set-cashier').value.trim() || 'แอดมิน';
   db.settings.receiptFooter = document.getElementById('set-footer').value.trim() || 'ขอบคุณที่ใช้บริการ';
   saveDB(); applySettings(); renderAllPages(); showToast('บันทึกการตั้งค่าแล้ว');
