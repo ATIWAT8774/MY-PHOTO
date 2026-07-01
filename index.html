@@ -653,7 +653,7 @@
         <button onclick="closeCameraScanner()" class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center"><i data-lucide="x"></i></button>
       </div>
       <div id="reader" class="overflow-hidden rounded-2xl soft-border"></div>
-      <p id="scanner-status" class="text-sm text-gray-500 mt-3">พร้อมสแกน</p>
+      <p id="scanner-status" class="text-sm text-gray-500 mt-3">กดอนุญาตกล้อง แล้ววางบาร์โค้ดกลางกรอบ</p>
     </div>
   </div>
 
@@ -952,63 +952,83 @@ function closeMobileCart(){
 }
 
 async function openCameraScanner(){
-  document.getElementById('scanner-modal').classList.remove('hidden');
-  document.getElementById('scanner-status').textContent = 'กำลังเปิดกล้อง...';
-  lucide.createIcons();
+  const modal = document.getElementById('scanner-modal');
+  const status = document.getElementById('scanner-status');
+  const reader = document.getElementById('reader');
 
-  if(!window.isSecureContext && location.protocol !== 'file:'){
-    document.getElementById('scanner-status').textContent = 'กล้องต้องเปิดผ่าน HTTPS หรือ localhost';
-    return;
+  modal.classList.remove('hidden');
+  status.textContent = 'กำลังเปิดกล้อง...';
+  reader.innerHTML = '';
+
+  if(window.lucide) lucide.createIcons();
+
+  if(location.protocol === 'file:'){
+    status.textContent = 'ถ้าเปิดจากไฟล์ กล้องอาจใช้ไม่ได้ กรุณาเปิดผ่าน HTTPS หรือ localhost';
   }
 
   if(!window.Html5Qrcode){
-    document.getElementById('scanner-status').textContent = 'โหลดระบบสแกนกล้องไม่สำเร็จ';
+    status.textContent = 'โหลดระบบสแกนกล้องไม่ได้ กรุณาต่ออินเทอร์เน็ตก่อน';
     return;
   }
 
   try{
-    document.getElementById('reader').innerHTML = '';
-    html5QrCode = new Html5Qrcode('reader');
-
-    const formats = [];
-    if(window.Html5QrcodeSupportedFormats){
-      formats.push(
-        Html5QrcodeSupportedFormats.CODE_128,
-        Html5QrcodeSupportedFormats.CODE_39,
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.UPC_E,
-        Html5QrcodeSupportedFormats.QR_CODE
-      );
+    if(html5QrCode && scannerRunning){
+      try{ await html5QrCode.stop(); }catch(e){}
+      scannerRunning = false;
     }
+
+    html5QrCode = new Html5Qrcode("reader");
+
+    const config = {
+      fps: 10,
+      qrbox: { width: 260, height: 160 },
+      rememberLastUsedCamera: true
+    };
 
     scannerRunning = true;
 
     await html5QrCode.start(
-      { facingMode: { ideal: 'environment' } },
-      {
-        fps: 15,
-        qrbox: function(w, h){
-          return { width: Math.floor(w * 0.88), height: Math.min(170, Math.floor(h * 0.36)) };
-        },
-        aspectRatio: 1.777,
-        rememberLastUsedCamera: true,
-        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-        formatsToSupport: formats
-      },
+      { facingMode: "environment" },
+      config,
       async (decodedText) => {
-        document.getElementById('scanner-status').textContent = 'พบรหัส: ' + decodedText;
+        status.textContent = 'พบรหัส: ' + decodedText;
         const ok = addProductByCode(decodedText);
         if(ok) await closeCameraScanner();
       },
       () => {}
     );
 
-    document.getElementById('scanner-status').textContent = 'กำลังสแกน... วางบาร์โค้ดแนวนอนกลางกรอบ';
+    status.textContent = 'กำลังสแกน... วางบาร์โค้ดให้อยู่กลางกรอบ';
   }catch(err){
     console.error(err);
-    document.getElementById('scanner-status').textContent = 'เปิดกล้องไม่ได้ หรืออ่านบาร์โค้ดนี้ไม่ได้';
+    scannerRunning = false;
+
+    try{
+      const cameras = await Html5Qrcode.getCameras();
+      if(cameras && cameras.length){
+        const cam = cameras[cameras.length - 1];
+        html5QrCode = new Html5Qrcode("reader");
+        scannerRunning = true;
+
+        await html5QrCode.start(
+          cam.id,
+          { fps: 10, qrbox: { width: 260, height: 160 } },
+          async (decodedText) => {
+            status.textContent = 'พบรหัส: ' + decodedText;
+            const ok = addProductByCode(decodedText);
+            if(ok) await closeCameraScanner();
+          },
+          () => {}
+        );
+
+        status.textContent = 'กำลังสแกน...';
+        return;
+      }
+    }catch(e2){
+      console.error(e2);
+    }
+
+    status.textContent = 'เปิดกล้องไม่ได้: กรุณาอนุญาตกล้อง และเปิดผ่าน HTTPS/localhost';
   }
 }
 
