@@ -700,23 +700,33 @@ function loadDB(){
 }
 function saveDB(){ localStorage.setItem(KEY, JSON.stringify(db)); }
 function money(n){ return (Number(n)||0).toLocaleString('th-TH',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' บาท'; }
+
+
+
 function playScanBeep(){
   try{
     const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AudioContext();
+    if(!window.__scanAudioCtx) window.__scanAudioCtx = new AudioContext();
+    const ctx = window.__scanAudioCtx;
+    if(ctx.state === 'suspended') ctx.resume();
+
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = 1200;
-    gain.gain.value = 0.08;
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(1450, ctx.currentTime);
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.start();
-    setTimeout(() => {
-      osc.stop();
-      ctx.close();
-    }, 90);
-  }catch(e){}
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.13);
+  }catch(e){
+    try{
+      const audio = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=");
+      audio.play();
+    }catch(_){}
+  }
 }
 
 function showToast(msg){
@@ -972,6 +982,7 @@ function closeMobileCart(){
 }
 
 async function openCameraScanner(){
+  playScanBeep();
   const modal = document.getElementById('scanner-modal');
   const status = document.getElementById('scanner-status');
   const reader = document.getElementById('reader');
@@ -1511,97 +1522,192 @@ function adjustStock(id){
   saveDB(); renderProducts(); renderAllPages(); showToast('ปรับสต๊อกแล้ว');
 }
 
+
+function getActiveBills(){
+  return db.bills.filter(b => !b.voided);
+}
+function calcBillReturnedTotal(billNo){
+  return (db.returns || [])
+    .filter(r => r.billNo === billNo && r.type === 'คืนสินค้า')
+    .reduce((sum, r) => sum + (Number(r.refundAmount) || 0), 0);
+}
+function returnableQty(bill, item){
+  const returned = (db.returns || [])
+    .filter(r => r.billNo === bill.billNo && r.itemId === item.id && r.type === 'คืนสินค้า')
+    .reduce((s,r)=>s+(Number(r.qty)||0),0);
+  return Math.max(0, item.qty - returned);
+}
+function billNetAfterReturns(bill){
+  return Math.max(0, (Number(bill.netTotal)||0) - calcBillReturnedTotal(bill.billNo));
+}
+
 function renderReturnsPage(){
+  const latestBills = getActiveBills().slice().reverse().slice(0,10);
   const box = document.getElementById('page-returns');
-  box.innerHTML = pageTitle('เปลี่ยน/คืนสินค้า','ค้นหาเลขที่บิลเพื่อคืนสินค้าเข้าสต๊อกและบันทึกประวัติ') + `
+  box.innerHTML = pageTitle('เปลี่ยน/คืนสินค้า','') + `
     <div class="bg-white rounded-3xl card-shadow p-5 mb-5">
+      <h3 class="text-xl font-bold mb-3">ค้นหาบิล</h3>
       <div class="flex gap-3">
-        <input id="return-bill-input" placeholder="กรอกเลขที่บิล เช่น INV-20260629-0001" class="flex-1 p-4 soft-border rounded-2xl text-lg">
-        <button onclick="findReturnBill()" class="px-6 bg-primary text-white rounded-2xl font-bold">ค้นหาบิล</button>
+        <input id="return-bill-input" placeholder="กรอกเลขที่บิล" class="flex-1 p-4 soft-border rounded-2xl text-lg">
+        <button onclick="findReturnBill()" class="px-6 bg-primary text-white rounded-2xl font-bold">ค้นหา</button>
       </div>
       <div id="return-result" class="mt-5"></div>
     </div>
+
+    <div class="bg-white rounded-3xl card-shadow p-5 mb-5">
+      <h3 class="text-xl font-bold mb-3">บิลล่าสุด 10 รายการ</h3>
+      <div class="space-y-2">
+        ${latestBills.map(b=>`
+          <button onclick="selectReturnBill('${b.billNo}')" class="w-full text-left p-4 rounded-2xl bg-gray-50 hover:bg-primary-soft">
+            <div class="flex justify-between gap-3">
+              <b>${b.billNo}</b>
+              <b class="text-primary">${money(billNetAfterReturns(b))}</b>
+            </div>
+            <div class="text-sm text-gray-500">${new Date(b.createdAt).toLocaleString('th-TH')} | ${b.paymentText}</div>
+          </button>
+        `).join('') || '<p class="text-gray-400">ยังไม่มีบิล</p>'}
+      </div>
+    </div>
+
     <div class="bg-white rounded-3xl card-shadow p-5">
-      <h3 class="text-xl font-bold mb-3">ประวัติคืน/เปลี่ยนสินค้า</h3>
-      ${db.returns.map(r=>`<div class="border-t py-3"><b>${r.billNo}</b> | ${r.itemName} x${r.qty} | ${r.type} | ${new Date(r.createdAt).toLocaleString('th-TH')}</div>`).join('') || '<p class="text-gray-400">ยังไม่มีประวัติ</p>'}
+      <h3 class="text-xl font-bold mb-3">ประวัติเปลี่ยน/คืนสินค้า</h3>
+      ${(db.returns || []).slice().reverse().map(r=>`
+        <div class="border-t py-3">
+          <b>${r.billNo}</b> | ${r.itemName} x${r.qty} | ${r.type}
+          ${r.exchangeToName ? `<br><span class="text-gray-600">เปลี่ยนเป็น: ${r.exchangeToName} ${r.exchangeToSize || ''}/${r.exchangeToColor || ''}</span>` : ''}
+          ${Number(r.priceDiff||0) !== 0 ? `<br><span class="${r.priceDiff>0?'text-red-500':'text-green-600'}">ส่วนต่าง: ${money(Math.abs(r.priceDiff))} ${r.priceDiff>0?'ลูกค้าจ่ายเพิ่ม':'คืนเงินให้ลูกค้า'}</span>` : ''}
+          ${Number(r.refundAmount||0) > 0 ? `<br><span class="text-red-500">ลดยอดขาย: ${money(r.refundAmount)}</span>` : ''}
+          <br><span class="text-sm text-gray-400">${new Date(r.createdAt).toLocaleString('th-TH')}</span>
+        </div>
+      `).join('') || '<p class="text-gray-400">ยังไม่มีประวัติ</p>'}
     </div>`;
+}
+function selectReturnBill(billNo){
+  document.getElementById('return-bill-input').value = billNo;
+  findReturnBill();
 }
 function findReturnBill(){
   const no = document.getElementById('return-bill-input').value.trim();
-  const bill = db.bills.find(b=>b.billNo===no);
+  const bill = db.bills.find(b=>b.billNo===no && !b.voided);
   const box = document.getElementById('return-result');
   if(!bill) return box.innerHTML = '<p class="text-red-500 font-semibold">ไม่พบบิล</p>';
+
   box.innerHTML = `
-    <h3 class="font-bold text-lg mb-2">${bill.billNo}</h3>
-    ${bill.items.map((i,idx)=>`
-      <div class="flex items-center justify-between border-t py-3">
-        <div><b>${i.name}</b><br><span class="text-gray-500">ซื้อ ${i.qty} ชิ้น ราคา ${money(i.price*i.qty)}</span></div>
-        <div class="flex gap-2">
-          <input id="return-qty-${idx}" type="number" min="1" max="${i.qty}" value="1" class="w-20 p-2 soft-border rounded-xl">
-          <select id="return-type-${idx}" class="p-2 soft-border rounded-xl"><option>คืนสินค้า</option><option>เปลี่ยนสินค้า</option></select>
-          <button onclick="processReturn('${bill.billNo}',${idx})" class="px-3 py-2 bg-primary text-white rounded-xl font-semibold">บันทึก</button>
+    <div class="rounded-2xl bg-gray-50 p-4 mb-3">
+      <h3 class="font-bold text-lg">${bill.billNo}</h3>
+      <p class="text-sm text-gray-500">${new Date(bill.createdAt).toLocaleString('th-TH')} | ยอดปัจจุบันหลังคืน ${money(billNetAfterReturns(bill))}</p>
+    </div>
+    ${bill.items.map((i,idx)=>{
+      const remain = returnableQty(bill, i);
+      return `
+      <div class="border-t py-4">
+        <div class="flex justify-between gap-3 mb-3">
+          <div>
+            <b>${i.name}</b>
+            <p class="text-gray-500">ไซซ์ ${i.size || '-'} | สี ${i.color || '-'} | ซื้อ ${i.qty} ชิ้น | คืนได้ ${remain} ชิ้น</p>
+          </div>
+          <b>${money(i.price * i.qty)}</b>
         </div>
-      </div>`).join('')}`;
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
+          <input id="return-qty-${idx}" type="number" min="1" max="${remain}" value="${remain > 0 ? 1 : 0}" class="p-3 soft-border rounded-xl" ${remain<=0?'disabled':''}>
+          <select id="return-type-${idx}" onchange="toggleExchangeSelect(${idx})" class="p-3 soft-border rounded-xl" ${remain<=0?'disabled':''}>
+            <option>คืนสินค้า</option>
+            <option>เปลี่ยนสินค้า</option>
+          </select>
+          <select id="exchange-product-${idx}" class="p-3 soft-border rounded-xl hidden md:col-span-2">
+            <option value="">เลือกสินค้าใหม่</option>
+            ${db.products.map(p=>`<option value="${p.id}">${p.name} | ${p.size || '-'} | ${p.color || '-'} | ${money(p.price)} | เหลือ ${p.stock}</option>`).join('')}
+          </select>
+          <button onclick="processReturn('${bill.billNo}',${idx})" class="p-3 bg-primary text-white rounded-xl font-semibold" ${remain<=0?'disabled':''}>บันทึก</button>
+        </div>
+        <p id="exchange-diff-${idx}" class="text-sm text-gray-500 mt-2"></p>
+      </div>`;
+    }).join('')}`;
+}
+function toggleExchangeSelect(idx){
+  const type = document.getElementById('return-type-'+idx).value;
+  const sel = document.getElementById('exchange-product-'+idx);
+  sel.classList.toggle('hidden', type !== 'เปลี่ยนสินค้า');
 }
 function processReturn(billNo, idx){
   const bill = db.bills.find(b=>b.billNo===billNo);
+  if(!bill) return showToast('ไม่พบบิล');
+
   const item = bill.items[idx];
-  const qty = Math.min(Number(document.getElementById('return-qty-'+idx).value)||1, item.qty);
+  const remain = returnableQty(bill, item);
+  const qty = Math.min(Number(document.getElementById('return-qty-'+idx).value)||1, remain);
   const type = document.getElementById('return-type-'+idx).value;
-  const p = db.products.find(x=>x.id===item.id);
-  if(p) p.stock += qty;
-  db.returns.push({ id:'R'+Date.now(), billNo, itemId:item.id, itemName:item.name, qty, type, createdAt:new Date().toISOString() });
-  saveDB(); renderProducts(); renderAllPages(); showToast('บันทึกการคืน/เปลี่ยนสินค้าแล้ว');
-}
 
-function getPeriodRange(period){
-  const now = new Date();
-  const start = new Date(now);
-  const end = new Date(now);
-  end.setHours(23,59,59,999);
+  if(qty <= 0) return showToast('ไม่มีจำนวนที่คืน/เปลี่ยนได้');
 
-  if(period === 'today'){
-    start.setHours(0,0,0,0);
-  } else if(period === 'week'){
-    const day = (now.getDay() + 6) % 7; // Monday = 0
-    start.setDate(now.getDate() - day);
-    start.setHours(0,0,0,0);
-  } else if(period === 'month'){
-    start.setDate(1);
-    start.setHours(0,0,0,0);
-  } else if(period === 'year'){
-    start.setMonth(0,1);
-    start.setHours(0,0,0,0);
+  const oldProduct = db.products.find(x=>x.id===item.id);
+  if(oldProduct) oldProduct.stock += qty;
+
+  const record = {
+    id:'R'+Date.now(),
+    billNo,
+    itemId:item.id,
+    itemName:item.name,
+    qty,
+    type,
+    createdAt:new Date().toISOString()
+  };
+
+  if(type === 'คืนสินค้า'){
+    const ratio = bill.subtotal ? (item.price * qty) / bill.subtotal : 0;
+    const discountShare = (bill.discount || 0) * ratio;
+    const refundAmount = Math.max(0, (item.price * qty) - discountShare);
+
+    record.refundAmount = refundAmount;
+    record.priceDiff = -refundAmount;
+
+    bill.returnedAmount = (Number(bill.returnedAmount)||0) + refundAmount;
+    bill.netTotal = Math.max(0, (Number(bill.netTotal)||0) - refundAmount);
   }
-  return {start, end};
+
+  if(type === 'เปลี่ยนสินค้า'){
+    const newId = document.getElementById('exchange-product-'+idx).value;
+    if(!newId) return showToast('กรุณาเลือกสินค้าใหม่');
+
+    const newProduct = db.products.find(p=>p.id===newId);
+    if(!newProduct) return showToast('ไม่พบสินค้าใหม่');
+    if(newProduct.stock < qty) return showToast('สินค้าใหม่สต๊อกไม่พอ');
+
+    newProduct.stock -= qty;
+
+    const oldTotal = item.price * qty;
+    const newTotal = newProduct.price * qty;
+    const priceDiff = newTotal - oldTotal;
+
+    record.exchangeToId = newProduct.id;
+    record.exchangeToName = newProduct.name;
+    record.exchangeToSize = newProduct.size || '';
+    record.exchangeToColor = newProduct.color || '';
+    record.exchangeToPrice = newProduct.price;
+    record.priceDiff = priceDiff;
+    record.refundAmount = priceDiff < 0 ? Math.abs(priceDiff) : 0;
+    record.extraCharge = priceDiff > 0 ? priceDiff : 0;
+
+    bill.netTotal = Math.max(0, (Number(bill.netTotal)||0) + priceDiff);
+    bill.exchangeAdjustAmount = (Number(bill.exchangeAdjustAmount)||0) + priceDiff;
+  }
+
+  if(!db.returns) db.returns = [];
+  db.returns.push(record);
+  saveDB();
+  renderProducts();
+  renderAllPages();
+  findReturnBill();
+
+  if(type === 'คืนสินค้า'){
+    showToast('คืนสินค้าแล้ว ลดยอดขาย ' + money(record.refundAmount));
+  }else{
+    if(record.priceDiff > 0) showToast('เปลี่ยนสินค้าแล้ว ลูกค้าจ่ายเพิ่ม ' + money(record.priceDiff));
+    else if(record.priceDiff < 0) showToast('เปลี่ยนสินค้าแล้ว คืนเงิน ' + money(Math.abs(record.priceDiff)));
+    else showToast('เปลี่ยนสินค้าแล้ว ไม่มีส่วนต่าง');
+  }
 }
-function periodLabel(period){
-  return period === 'today' ? 'วันนี้' : period === 'week' ? 'สัปดาห์นี้' : period === 'month' ? 'เดือนนี้' : 'ปีนี้';
-}
-function getBillsByPeriod(period){
-  const {start, end} = getPeriodRange(period);
-  return db.bills.filter(b => {
-    if(b.voided) return false;
-    const d = new Date(b.createdAt);
-    return d >= start && d <= end;
-  });
-}
-function calcReport(period){
-  const bills = getBillsByPeriod(period);
-  const sales = bills.reduce((s,b)=>s+(b.netTotal||0),0);
-  const cost = bills.reduce((s,b)=>s + b.items.reduce((x,i)=>x+((i.cost||0)*i.qty),0),0);
-  const grossBeforeDiscount = bills.reduce((s,b)=>s + b.items.reduce((x,i)=>x+(((i.price||0)-(i.cost||0))*i.qty),0),0);
-  const discount = bills.reduce((s,b)=>s+(b.discount||0),0);
-  const profit = grossBeforeDiscount - discount;
-  const qty = bills.reduce((s,b)=>s + b.items.reduce((x,i)=>x+i.qty,0),0);
-  const items = {};
-  bills.forEach(b=>b.items.forEach(i=>{
-    const key = `${i.name} ${i.size ? 'ไซซ์ '+i.size : ''} ${i.color ? 'สี '+i.color : ''}`.trim();
-    items[key]=(items[key]||0)+i.qty;
-  }));
-  const best = Object.entries(items).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  return {bills, sales, cost, discount, profit, qty, best};
-}
+
 function renderReportsPage(){
   const activePeriod = localStorage.getItem(KEY+'_report_period') || 'today';
   const data = calcReport(activePeriod);
