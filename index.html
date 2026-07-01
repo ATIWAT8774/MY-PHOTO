@@ -700,6 +700,25 @@ function loadDB(){
 }
 function saveDB(){ localStorage.setItem(KEY, JSON.stringify(db)); }
 function money(n){ return (Number(n)||0).toLocaleString('th-TH',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' บาท'; }
+function playScanBeep(){
+  try{
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 1200;
+    gain.gain.value = 0.08;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    setTimeout(() => {
+      osc.stop();
+      ctx.close();
+    }, 90);
+  }catch(e){}
+}
+
 function showToast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.remove('hidden');
@@ -915,6 +934,7 @@ function addProductByCode(code){
     return false;
   }
   addToCart(product.id);
+  playScanBeep();
   const input = document.getElementById('search-input');
   if(input) input.value = '';
   renderProducts();
@@ -997,8 +1017,10 @@ async function openCameraScanner(){
         lastScannedAt = now;
         status.textContent = 'พบรหัส: ' + decodedText;
         const ok = addProductByCode(decodedText);
-        // เพิ่มลงตะกร้าแล้วสแกนต่อได้ ไม่เด้งไปหน้าจ่ายเงิน
-        if(ok) status.textContent = 'เพิ่มลงตะกร้าแล้ว สแกนชิ้นต่อไปได้';
+        if(ok){
+          status.textContent = 'เพิ่มลงตะกร้าแล้ว';
+          await closeCameraScanner();
+        }
       },
       () => {}
     );
@@ -1025,8 +1047,10 @@ async function openCameraScanner(){
             lastScannedAt = now;
             status.textContent = 'พบรหัส: ' + decodedText;
             const ok = addProductByCode(decodedText);
-            // เพิ่มลงตะกร้าแล้วสแกนต่อได้ ไม่เด้งไปหน้าจ่ายเงิน
-        if(ok) status.textContent = 'เพิ่มลงตะกร้าแล้ว สแกนชิ้นต่อไปได้';
+            if(ok){
+          status.textContent = 'เพิ่มลงตะกร้าแล้ว';
+          await closeCameraScanner();
+        }
           },
           () => {}
         );
