@@ -918,7 +918,7 @@ function addProductByCode(code){
   const input = document.getElementById('search-input');
   if(input) input.value = '';
   renderProducts();
-  openMobileCart();
+  showToast('เพิ่มลงตะกร้าแล้ว');
   return true;
 }
 
@@ -991,9 +991,14 @@ async function openCameraScanner(){
       { facingMode: "environment" },
       config,
       async (decodedText) => {
+        const now = Date.now();
+        if(decodedText === lastScannedCode && now - lastScannedAt < 1200) return;
+        lastScannedCode = decodedText;
+        lastScannedAt = now;
         status.textContent = 'พบรหัส: ' + decodedText;
         const ok = addProductByCode(decodedText);
-        if(ok) await closeCameraScanner();
+        // เพิ่มลงตะกร้าแล้วสแกนต่อได้ ไม่เด้งไปหน้าจ่ายเงิน
+        if(ok) status.textContent = 'เพิ่มลงตะกร้าแล้ว สแกนชิ้นต่อไปได้';
       },
       () => {}
     );
@@ -1014,9 +1019,14 @@ async function openCameraScanner(){
           cam.id,
           { fps: 10, qrbox: { width: 260, height: 160 } },
           async (decodedText) => {
+            const now = Date.now();
+            if(decodedText === lastScannedCode && now - lastScannedAt < 1200) return;
+            lastScannedCode = decodedText;
+            lastScannedAt = now;
             status.textContent = 'พบรหัส: ' + decodedText;
             const ok = addProductByCode(decodedText);
-            if(ok) await closeCameraScanner();
+            // เพิ่มลงตะกร้าแล้วสแกนต่อได้ ไม่เด้งไปหน้าจ่ายเงิน
+        if(ok) status.textContent = 'เพิ่มลงตะกร้าแล้ว สแกนชิ้นต่อไปได้';
           },
           () => {}
         );
@@ -1231,6 +1241,8 @@ function renderSingleBarcodePreview(code){
   }
 }
 let currentBarcodeProduct = null;
+let lastScannedCode = '';
+let lastScannedAt = 0;
 function showBarcode(id){
   const p = db.products.find(x=>x.id===id);
   if(!p) return;
