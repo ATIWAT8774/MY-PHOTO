@@ -4,7 +4,66 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>งามตา SHOP - ระบบขายหน้าร้าน</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17">
+async function callSheetApi(action, payload={}){
+  const url = db.settings.sheetApiUrl || '';
+  if(!url){
+    showToast('ยังไม่ได้ตั้งค่า Google Apps Script URL');
+    throw new Error('Missing Apps Script URL');
+  }
+  const res = await fetch(url, {
+    method:'POST',
+    mode:'cors',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({action, payload})
+  });
+  const data = await res.json();
+  if(!data.ok) throw new Error(data.error || 'Google Sheet error');
+  return data;
+}
+async function syncToSheets(){
+  try{
+    showToast('กำลังส่งข้อมูลไป Google Sheets...');
+    await callSheetApi('saveAll', db);
+    showToast('ส่งข้อมูลไป Google Sheets แล้ว');
+  }catch(err){
+    console.error(err);
+    showToast('ส่งข้อมูลไม่สำเร็จ');
+  }
+}
+async function syncFromSheets(){
+  try{
+    if(!confirm('ดึงข้อมูลจาก Google Sheets มาแทนข้อมูลในเครื่องหรือไม่')) return;
+    showToast('กำลังดึงข้อมูลจาก Google Sheets...');
+    const data = await callSheetApi('getAll', {});
+    if(data.data){
+      db.products = data.data.products || db.products;
+      db.bills = data.data.bills || db.bills;
+      db.returns = data.data.returns || db.returns;
+      db.heldBills = data.data.heldBills || db.heldBills || [];
+      db.settings = {...db.settings, ...(data.data.settings || {})};
+      saveDB();
+      renderCategories();
+      renderProducts();
+      renderCart();
+      renderAllPages();
+      showToast('ดึงข้อมูลจาก Google Sheets แล้ว');
+    }
+  }catch(err){
+    console.error(err);
+    showToast('ดึงข้อมูลไม่สำเร็จ');
+  }
+}
+async function autoSyncBillToSheets(bill){
+  if(!db.settings.sheetApiUrl) return;
+  try{
+    await callSheetApi('appendBill', {bill});
+  }catch(err){
+    console.warn('Auto sync bill failed', err);
+  }
+}
+
+</script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -755,7 +814,7 @@
 const KEY = 'ngamta_shop_pos_v2';
 
 const defaultData = {
-  settings: { storeName:'งามตา SHOP', cashier:'แอดมิน', receiptFooter:'ขอบคุณที่ใช้บริการ' },
+  settings: { storeName:'งามตา SHOP', cashier:'แอดมิน', receiptFooter:'ขอบคุณที่ใช้บริการ', sheetApiUrl:'' },
   products: [
     { id:'TSH-BASIC-BLK-S', barcode:'240001000101', name:'เสื้อยืด Basic', type:'เสื้อ', size:'S', color:'ดำ', price:199, cost:120, stock:10, cat:'เสื้อยืด', img:'https://images.pexels.com/photos/8532616/pexels-photo-8532616.jpeg?auto=compress&cs=tinysrgb&w=400' },
     { id:'TSH-BASIC-BLK-M', barcode:'240001000102', name:'เสื้อยืด Basic', type:'เสื้อ', size:'M', color:'ดำ', price:199, cost:120, stock:8, cat:'เสื้อยืด', img:'https://images.pexels.com/photos/8532616/pexels-photo-8532616.jpeg?auto=compress&cs=tinysrgb&w=400' },
@@ -1212,6 +1271,7 @@ function checkout(){
   });
   db.bills.push(bill);
   saveDB();
+  autoSyncBillToSheets(bill);
   lastBill = bill;
   cart = [];
   document.getElementById('discount-value').value = '';
@@ -1294,13 +1354,28 @@ function pageTitle(title, sub=''){
   return `<div class="mb-5"><h2 class="text-3xl font-bold">${title}</h2>${sub?`<p class="text-gray-500 mt-1">${sub}</p>`:''}</div>`;
 }
 function renderHistoryPage(){
+  const q = (localStorage.getItem(KEY+'_bill_search') || '').trim().toLowerCase();
+  const bills = [...db.bills].reverse().filter(b=>{
+    if(!q) return true;
+    const hay = [
+      b.billNo,
+      b.paymentText,
+      b.cashier,
+      new Date(b.createdAt).toLocaleDateString('th-TH'),
+      ...(b.items||[]).map(i=>`${i.name} ${i.size||''} ${i.color||''}`)
+    ].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+
   const box = document.getElementById('page-history');
-  const bills = [...db.bills].reverse();
-  box.innerHTML = pageTitle('ประวัติบิล','ค้นหา ตรวจสอบ และพิมพ์บิลย้อนหลัง') + `
+  box.innerHTML = pageTitle('ค้นหาบิล','') + `
+    <div class="bg-white rounded-3xl card-shadow p-4 mb-4">
+      <input id="bill-search-input" value="${q}" oninput="setBillSearch(this.value)" placeholder="ค้นหาเลขบิล / วันที่ / สินค้า / ช่องทางชำระเงิน" class="w-full p-4 soft-border rounded-2xl text-lg">
+    </div>
     <div class="bg-white rounded-3xl card-shadow overflow-hidden">
       <table class="responsive-table w-full text-left">
         <thead class="bg-gray-50 text-gray-500">
-          <tr><th class="p-4">เลขที่บิล</th><th>วันที่</th><th>ชำระ</th><th>ยอดสุทธิ</th><th>สถานะ</th><th class="text-right p-4">จัดการ</th></tr>
+          <tr><th class="p-4">เลขที่บิล</th><th>วันที่</th><th>ชำระ</th><th>ยอดสุทธิ</th><th>สินค้า</th><th class="text-right p-4">จัดการ</th></tr>
         </thead>
         <tbody>
           ${bills.map(b=>`
@@ -1309,16 +1384,21 @@ function renderHistoryPage(){
               <td>${new Date(b.createdAt).toLocaleString('th-TH')}</td>
               <td>${b.paymentText}</td>
               <td class="font-bold text-primary">${money(b.netTotal)}</td>
-              <td>${b.voided?'<span class="text-red-500">ยกเลิกแล้ว</span>':'<span class="text-green-600">สำเร็จ</span>'}</td>
+              <td class="text-sm text-gray-500">${(b.items||[]).map(i=>`${i.name} ${i.size||''}/${i.color||''} x${i.qty}`).join('<br>')}</td>
               <td class="p-4 text-right">
-                <button onclick="setLastBill('${b.billNo}'); previewReceipt()" class="px-3 py-2 rounded-xl bg-gray-100 font-semibold">ดู/พิมพ์</button>
+                <button onclick="setLastBill('${b.billNo}'); previewReceipt()" class="px-3 py-2 rounded-xl bg-gray-100 font-semibold">ดูบิล</button>
               </td>
             </tr>
-          `).join('') || `<tr><td colspan="6" class="p-8 text-center text-gray-400">ยังไม่มีประวัติบิล</td></tr>`}
+          `).join('') || `<tr><td colspan="6" class="p-8 text-center text-gray-400">ไม่พบบิล</td></tr>`}
         </tbody>
       </table>
     </div>`;
 }
+function setBillSearch(value){
+  localStorage.setItem(KEY+'_bill_search', value || '');
+  renderHistoryPage();
+}
+
 function setLastBill(no){ lastBill = db.bills.find(b=>b.billNo===no); }
 
 
@@ -2155,22 +2235,31 @@ function setReportPeriod(period){
 }
 
 function renderSettingsPage(){
-  document.getElementById('page-settings').innerHTML = pageTitle('ตั้งค่าระบบ','ตั้งค่าชื่อร้าน ผู้ขาย และข้อความท้ายใบเสร็จ') + `
-    <form onsubmit="saveSettings(event)" class="bg-white rounded-3xl card-shadow p-6 max-w-xl space-y-3">
+  document.getElementById('page-settings').innerHTML = pageTitle('ตั้งค่าระบบ','') + `
+    <form onsubmit="saveSettings(event)" class="bg-white rounded-3xl card-shadow p-6 max-w-2xl space-y-3">
       <label class="font-semibold">ชื่อร้าน</label>
-      <input id="set-store" value="${db.settings.storeName}" class="w-full p-4 soft-border rounded-2xl">
+      <input id="set-store" value="${db.settings.storeName || 'งามตา SHOP'}" class="w-full p-4 soft-border rounded-2xl">
       <label class="font-semibold">ชื่อพนักงาน/ผู้ขาย</label>
-      <input id="set-cashier" value="${db.settings.cashier}" class="w-full p-4 soft-border rounded-2xl">
-      <label class="font-semibold">ข้อความท้ายใบเสร็จ</label>
-      <input id="set-footer" value="${db.settings.receiptFooter}" class="w-full p-4 soft-border rounded-2xl">
-      <button class="btn-touch px-6 bg-primary text-white rounded-2xl font-bold">บันทึกการตั้งค่า</button>
+      <input id="set-cashier" value="${db.settings.cashier || 'แอดมิน'}" class="w-full p-4 soft-border rounded-2xl">
+      <label class="font-semibold">ข้อความท้ายบิล</label>
+      <input id="set-footer" value="${db.settings.receiptFooter || db.settings.footer || 'ขอบคุณที่ใช้บริการ'}" class="w-full p-4 soft-border rounded-2xl">
+      <label class="font-semibold">Google Apps Script Web App URL</label>
+      <input id="set-sheet-api" value="${db.settings.sheetApiUrl || ''}" placeholder="วาง URL ที่ลงท้าย /exec" class="w-full p-4 soft-border rounded-2xl">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-2 pt-2">
+        <button class="btn-touch px-6 bg-primary text-white rounded-2xl font-bold">บันทึกตั้งค่า</button>
+        <button type="button" onclick="syncToSheets()" class="btn-touch px-6 bg-gray-900 text-white rounded-2xl font-bold">ส่งข้อมูลไปชีต</button>
+        <button type="button" onclick="syncFromSheets()" class="btn-touch px-6 bg-gray-100 rounded-2xl font-bold">ดึงข้อมูลจากชีต</button>
+      </div>
+      <p class="text-sm text-gray-500">ถ้าไม่ใส่ URL ระบบยังทำงานแบบ localStorage ได้ปกติ</p>
     </form>`;
 }
+
 function saveSettings(e){
   e.preventDefault();
   db.settings.storeName = document.getElementById('set-store').value.trim() || 'งามตา SHOP';
   db.settings.cashier = document.getElementById('set-cashier').value.trim() || 'แอดมิน';
   db.settings.receiptFooter = document.getElementById('set-footer').value.trim() || 'ขอบคุณที่ใช้บริการ';
+  db.settings.sheetApiUrl = document.getElementById('set-sheet-api')?.value.trim() || '';
   saveDB(); applySettings(); renderAllPages(); showToast('บันทึกการตั้งค่าแล้ว');
 }
 function resetDemoData(){
