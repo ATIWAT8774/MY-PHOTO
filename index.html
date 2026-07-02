@@ -1276,6 +1276,8 @@ function renderSingleBarcodePreview(code){
   }
 }
 let currentBarcodeProduct = null;
+let receiveItems = [];
+let pendingNewBarcode = '';
 let lastScannedCode = '';
 let lastScannedAt = 0;
 function showBarcode(id){
@@ -1344,6 +1346,129 @@ function renderPrintBarcodes(){
   });
 }
 
+
+function openReceiveModal(){
+  document.getElementById('receive-modal').classList.remove('hidden');
+  renderReceiveList();
+  setTimeout(()=>document.getElementById('receive-scan-input')?.focus(),100);
+  lucide.createIcons();
+}
+function closeReceiveModal(){
+  document.getElementById('receive-modal').classList.add('hidden');
+}
+function closeNewProductModal(){
+  document.getElementById('new-product-modal').classList.add('hidden');
+}
+function receiveScanManual(){
+  const input = document.getElementById('receive-scan-input');
+  const code = (input?.value || '').trim();
+  if(!code) return;
+  handleReceiveBarcode(code);
+  input.value = '';
+  input.focus();
+}
+function handleReceiveBarcode(code){
+  const cleaned = String(code).trim();
+  const product = db.products.find(p => String(p.barcode || '') === cleaned || String(p.id || '') === cleaned);
+  if(product){
+    const row = receiveItems.find(x => x.productId === product.id);
+    if(row) row.qty += 1;
+    else receiveItems.push({productId:product.id, barcode:product.barcode||'', name:product.name, type:product.type||'', size:product.size||'', color:product.color||'', qty:1, isNew:false});
+    if(typeof playScanBeep === 'function') playScanBeep();
+    renderReceiveList();
+    showToast('เพิ่มในรายการรับสินค้าแล้ว');
+    return;
+  }
+  pendingNewBarcode = cleaned;
+  document.getElementById('new-barcode').value = cleaned;
+  ['new-name','new-type','new-cat','new-size','new-color','new-cost','new-price','new-img'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('new-qty').value = 1;
+  document.getElementById('new-product-modal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('new-name')?.focus(),100);
+}
+function saveNewProductFromScan(e){
+  e.preventDefault();
+  const barcode = document.getElementById('new-barcode').value.trim();
+  const name = document.getElementById('new-name').value.trim();
+  if(!name) return showToast('กรอกชื่อสินค้า');
+  let base = name.replace(/\s+/g,'').toUpperCase().slice(0,8) || 'ITEM';
+  let id = base, n = 1;
+  while(db.products.some(p=>p.id===id)) id = base + '-' + n++;
+  const qty = Number(document.getElementById('new-qty').value) || 1;
+  const product = {
+    id, barcode, name,
+    type: document.getElementById('new-type').value.trim() || 'ทั่วไป',
+    cat: document.getElementById('new-cat').value.trim() || 'ทั่วไป',
+    size: document.getElementById('new-size').value.trim() || 'Free Size',
+    color: document.getElementById('new-color').value.trim() || '-',
+    cost: Number(document.getElementById('new-cost').value) || 0,
+    price: Number(document.getElementById('new-price').value) || 0,
+    stock: 0,
+    img: document.getElementById('new-img').value.trim()
+  };
+  db.products.push(product);
+  receiveItems.push({productId:product.id, barcode:product.barcode, name:product.name, type:product.type, size:product.size, color:product.color, qty, isNew:true});
+  saveDB();
+  closeNewProductModal();
+  renderReceiveList();
+  renderCategories();
+  renderProducts();
+  renderAllPages();
+  showToast('เพิ่มสินค้าใหม่ในรายการรับแล้ว');
+}
+function renderReceiveList(){
+  const box = document.getElementById('receive-list');
+  if(!box) return;
+  if(!receiveItems.length){
+    box.innerHTML = '<p class="text-center text-gray-400 py-8">ยังไม่มีรายการ</p>';
+    return;
+  }
+  box.innerHTML = receiveItems.map((item,idx)=>`
+    <div class="bg-white rounded-2xl p-3 mb-2 flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <b>${item.name}</b>
+        <p class="text-sm text-gray-500">${item.barcode || '-'} | ${item.type || '-'} | ไซซ์ ${item.size || '-'} | สี ${item.color || '-'}</p>
+        ${item.isNew ? '<span class="text-xs text-primary font-semibold">สินค้าใหม่</span>' : ''}
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="changeReceiveQty(${idx},-1)" class="w-9 h-9 rounded-xl bg-gray-100 font-bold">−</button>
+        <input onchange="setReceiveQty(${idx},this.value)" value="${item.qty}" type="number" min="1" class="w-20 p-2 soft-border rounded-xl text-center">
+        <button onclick="changeReceiveQty(${idx},1)" class="w-9 h-9 rounded-xl bg-gray-100 font-bold">+</button>
+        <button onclick="removeReceiveItem(${idx})" class="w-9 h-9 rounded-xl bg-red-50 text-red-500 font-bold">×</button>
+      </div>
+    </div>`).join('');
+}
+function changeReceiveQty(idx,delta){
+  receiveItems[idx].qty = Math.max(1, (Number(receiveItems[idx].qty)||1) + delta);
+  renderReceiveList();
+}
+function setReceiveQty(idx,value){
+  receiveItems[idx].qty = Math.max(1, Number(value)||1);
+  renderReceiveList();
+}
+function removeReceiveItem(idx){
+  receiveItems.splice(idx,1);
+  renderReceiveList();
+}
+function clearReceiveList(){
+  if(!confirm('ล้างรายการรับสินค้าหรือไม่')) return;
+  receiveItems = [];
+  renderReceiveList();
+}
+function commitReceiveStock(){
+  if(!receiveItems.length) return showToast('ยังไม่มีรายการรับสินค้า');
+  receiveItems.forEach(item=>{
+    const p = db.products.find(x=>x.id === item.productId);
+    if(p) p.stock = (Number(p.stock)||0) + (Number(item.qty)||0);
+  });
+  saveDB();
+  receiveItems = [];
+  renderReceiveList();
+  renderProducts();
+  renderAllPages();
+  showToast('บันทึกเข้าสต๊อกแล้ว');
+}
+
 function renderProductsPage(){
   const box = document.getElementById('page-products');
   box.innerHTML = pageTitle('จัดการสินค้าเสื้อผ้า','เพิ่มสินค้า แยกประเภท ไซซ์ สี และสร้างบาร์โค้ด CODE128') + `
@@ -1385,7 +1510,10 @@ function renderProductsPage(){
       <div class="xl:col-span-2 bg-white rounded-3xl card-shadow overflow-hidden">
         <div class="p-4 flex flex-wrap gap-2 justify-between items-center">
           <h3 class="text-xl font-bold">รายการสินค้า</h3>
-          <button onclick="printAllBarcodes()" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold flex items-center gap-2"><i data-lucide="printer" class="w-4 h-4"></i>พิมพ์บาร์โค้ดทั้งหมด</button>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="openReceiveModal()" class="px-4 py-2 rounded-xl bg-primary-soft text-primary font-semibold flex items-center gap-2"><i data-lucide="scan-barcode" class="w-4 h-4"></i>รับสินค้า</button>
+            <button onclick="printAllBarcodes()" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold flex items-center gap-2"><i data-lucide="printer" class="w-4 h-4"></i>พิมพ์บาร์โค้ดทั้งหมด</button>
+          </div>
         </div>
         <table class="responsive-table w-full text-left">
           <thead class="bg-gray-50 text-gray-500"><tr><th class="p-4">สินค้า</th><th>ประเภท/ไซซ์/สี</th><th>บาร์โค้ด</th><th>ต้นทุน/ขาย</th><th>กำไร/ชิ้น</th><th>สต๊อก</th><th class="text-right p-4">จัดการ</th></tr></thead>
@@ -1442,19 +1570,26 @@ function editProduct(id){
   if(!p) return;
   switchPage('products');
   setTimeout(()=>{
-    document.getElementById('product-id').value=p.id;
-    document.getElementById('product-barcode').value=p.barcode||'';
-    document.getElementById('product-name').value=p.name;
-    document.getElementById('product-type').value=p.type||'';
-    document.getElementById('product-size').value=p.size||'';
-    document.getElementById('product-color').value=p.color||'';
-    document.getElementById('product-price').value=p.price;
-    document.getElementById('product-cost').value=p.cost||0;
-    document.getElementById('product-stock').value=p.stock;
-    document.getElementById('product-cat').value=p.cat;
-    document.getElementById('product-img').value=p.img||'';
-    renderSingleBarcodePreview(p.barcode||'');
-  },0);
+    const fields = {
+      'product-id': p.id,
+      'product-barcode': p.barcode || '',
+      'product-name': p.name || '',
+      'product-type': p.type || '',
+      'product-size': p.size || '',
+      'product-color': p.color || '',
+      'product-price': p.price || 0,
+      'product-cost': p.cost || 0,
+      'product-stock': p.stock || 0,
+      'product-cat': p.cat || '',
+      'product-img': p.img || ''
+    };
+    Object.entries(fields).forEach(([id,val])=>{
+      const el = document.getElementById(id);
+      if(el) el.value = val;
+    });
+    if(typeof renderSingleBarcodePreview === 'function') renderSingleBarcodePreview(p.barcode || '');
+    document.getElementById('product-name')?.focus();
+  },150);
 }
 function deleteProduct(id){
   if(!confirm('ลบสินค้านี้หรือไม่')) return;
