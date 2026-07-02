@@ -1347,6 +1347,101 @@ function renderPrintBarcodes(){
 }
 
 
+
+function openProductModal(id=''){
+  const isEdit = !!id;
+  const p = isEdit ? db.products.find(x=>x.id===id) : null;
+  document.getElementById('product-modal-title').textContent = isEdit ? 'แก้ไขสินค้า' : 'เพิ่มสินค้า';
+  document.getElementById('pm-original-id').value = p?.id || '';
+  document.getElementById('pm-id').value = p?.id || '';
+  document.getElementById('pm-barcode').value = p?.barcode || '';
+  document.getElementById('pm-name').value = p?.name || '';
+  document.getElementById('pm-type').value = p?.type || '';
+  document.getElementById('pm-cat').value = p?.cat || '';
+  document.getElementById('pm-size').value = p?.size || '';
+  document.getElementById('pm-color').value = p?.color || '';
+  document.getElementById('pm-cost').value = p?.cost || '';
+  document.getElementById('pm-price').value = p?.price || '';
+  document.getElementById('pm-stock').value = p?.stock ?? '';
+  document.getElementById('pm-img').value = p?.img || '';
+  document.getElementById('pm-delete-btn').classList.toggle('hidden', !isEdit);
+  renderModalBarcodePreview(p?.barcode || '');
+  document.getElementById('product-modal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById(isEdit ? 'pm-name' : 'pm-id')?.focus(),100);
+  lucide.createIcons();
+}
+function closeProductModal(){
+  document.getElementById('product-modal').classList.add('hidden');
+}
+function generateModalBarcode(){
+  const code = typeof makeBarcode === 'function' ? makeBarcode() : ('24' + String(Date.now()).slice(-10));
+  document.getElementById('pm-barcode').value = code;
+  renderModalBarcodePreview(code);
+}
+function renderModalBarcodePreview(code){
+  const wrap = document.getElementById('pm-barcode-preview');
+  const svg = document.getElementById('pm-barcode-svg');
+  if(!wrap || !svg) return;
+  if(!code){
+    wrap.classList.add('hidden');
+    svg.innerHTML = '';
+    return;
+  }
+  wrap.classList.remove('hidden');
+  if(window.JsBarcode){
+    try{ JsBarcode(svg, code, { format:'CODE128', width:2, height:56, displayValue:true, fontSize:14, margin:8 }); }catch(e){}
+  }
+}
+function saveProductModal(e){
+  e.preventDefault();
+  const originalId = document.getElementById('pm-original-id').value.trim();
+  const id = document.getElementById('pm-id').value.trim();
+  const barcode = document.getElementById('pm-barcode').value.trim();
+
+  if(!id) return showToast('กรอกรหัสสินค้า');
+  if(!document.getElementById('pm-name').value.trim()) return showToast('กรอกชื่อสินค้า');
+
+  if(db.products.some(p=>p.id !== originalId && p.id === id)) return showToast('รหัสสินค้าซ้ำ');
+  if(barcode && db.products.some(p=>p.id !== originalId && String(p.barcode || '') === barcode)) return showToast('บาร์โค้ดซ้ำ');
+
+  const product = {
+    id,
+    barcode,
+    name: document.getElementById('pm-name').value.trim(),
+    type: document.getElementById('pm-type').value.trim() || 'ทั่วไป',
+    cat: document.getElementById('pm-cat').value.trim() || 'ทั่วไป',
+    size: document.getElementById('pm-size').value.trim() || 'Free Size',
+    color: document.getElementById('pm-color').value.trim() || '-',
+    cost: Number(document.getElementById('pm-cost').value) || 0,
+    price: Number(document.getElementById('pm-price').value) || 0,
+    stock: Number(document.getElementById('pm-stock').value) || 0,
+    img: document.getElementById('pm-img').value.trim()
+  };
+
+  const idx = db.products.findIndex(p=>p.id === originalId);
+  if(idx >= 0) db.products[idx] = product;
+  else db.products.push(product);
+
+  saveDB();
+  closeProductModal();
+  renderCategories();
+  renderProducts();
+  renderAllPages();
+  showToast('บันทึกสินค้าแล้ว');
+}
+function deleteProductFromModal(){
+  const id = document.getElementById('pm-original-id').value.trim();
+  if(!id) return;
+  if(!confirm('ลบสินค้านี้หรือไม่')) return;
+  db.products = db.products.filter(p=>p.id !== id);
+  saveDB();
+  closeProductModal();
+  renderCategories();
+  renderProducts();
+  renderAllPages();
+  showToast('ลบสินค้าแล้ว');
+}
+
 function openReceiveModal(){
   document.getElementById('receive-modal').classList.remove('hidden');
   renderReceiveList();
@@ -1472,8 +1567,11 @@ function commitReceiveStock(){
 function renderProductsPage(){
   const box = document.getElementById('page-products');
   box.innerHTML = pageTitle('จัดการสินค้าเสื้อผ้า','เพิ่มสินค้า แยกประเภท ไซซ์ สี และสร้างบาร์โค้ด CODE128') + `
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-      <form onsubmit="saveProduct(event)" class="bg-white rounded-3xl card-shadow p-5 space-y-3">
+    <div class="grid grid-cols-1 gap-5">
+      <div class="bg-white rounded-3xl card-shadow p-5">
+        <button onclick="openProductModal()" class="btn-touch px-5 bg-primary text-white rounded-2xl font-bold flex items-center gap-2"><i data-lucide="plus" class="w-5 h-5"></i>เพิ่มสินค้า</button>
+      </div>
+      <form onsubmit="saveProduct(event)" class="hidden bg-white rounded-3xl card-shadow p-5 space-y-3">
         <h3 class="text-xl font-bold">เพิ่ม/แก้ไขสินค้า</h3><p class="text-sm text-gray-500">กรอกต้นทุนเพื่อคำนวณกำไรในรายงาน</p>
         <div class="grid grid-cols-2 gap-2">
           <input id="product-id" placeholder="รหัสสินค้า เช่น TSH-BLK-M" class="w-full p-3 soft-border rounded-xl">
@@ -1507,7 +1605,7 @@ function renderProductsPage(){
         </div>
         <button class="w-full btn-touch bg-primary text-white rounded-2xl font-bold">บันทึกสินค้า</button>
       </form>
-      <div class="xl:col-span-2 bg-white rounded-3xl card-shadow overflow-hidden">
+      <div class="bg-white rounded-3xl card-shadow overflow-hidden">
         <div class="p-4 flex flex-wrap gap-2 justify-between items-center">
           <h3 class="text-xl font-bold">รายการสินค้า</h3>
           <div class="flex flex-wrap gap-2">
@@ -1526,7 +1624,7 @@ function renderProductsPage(){
                 <td>${money(p.cost||0)}<br><span class="text-sm text-gray-500">ขาย ${money(p.price)}</span></td><td class="font-bold text-primary">${money((p.price||0)-(p.cost||0))}</td><td>${p.stock}</td>
                 <td class="p-4 text-right">
                   <button onclick="showBarcode('${p.id}')" class="px-3 py-2 rounded-xl bg-primary-soft text-primary font-semibold">${p.barcode ? "บาร์โค้ด" : "ไม่มีบาร์โค้ด"}</button>
-                  <button onclick="editProduct('${p.id}')" class="px-3 py-2 rounded-xl bg-gray-100 font-semibold">แก้ไข</button>
+                  <button onclick="openProductModal('${p.id}')" class="px-3 py-2 rounded-xl bg-gray-100 font-semibold">แก้ไข</button>
                   <button onclick="deleteProduct('${p.id}')" class="px-3 py-2 rounded-xl bg-red-50 text-red-600 font-semibold">ลบ</button>
                 </td>
               </tr>`).join('')}
@@ -1565,32 +1663,7 @@ function saveProduct(e){
   if(idx>=0) db.products[idx]=p; else db.products.push(p);
   saveDB(); renderCategories(); renderProducts(); renderAllPages(); showToast('บันทึกสินค้าแล้ว');
 }
-function editProduct(id){
-  const p = db.products.find(x=>x.id===id);
-  if(!p) return;
-  switchPage('products');
-  setTimeout(()=>{
-    const fields = {
-      'product-id': p.id,
-      'product-barcode': p.barcode || '',
-      'product-name': p.name || '',
-      'product-type': p.type || '',
-      'product-size': p.size || '',
-      'product-color': p.color || '',
-      'product-price': p.price || 0,
-      'product-cost': p.cost || 0,
-      'product-stock': p.stock || 0,
-      'product-cat': p.cat || '',
-      'product-img': p.img || ''
-    };
-    Object.entries(fields).forEach(([id,val])=>{
-      const el = document.getElementById(id);
-      if(el) el.value = val;
-    });
-    if(typeof renderSingleBarcodePreview === 'function') renderSingleBarcodePreview(p.barcode || '');
-    document.getElementById('product-name')?.focus();
-  },150);
-}
+function editProduct(id){ openProductModal(id); }
 function deleteProduct(id){
   if(!confirm('ลบสินค้านี้หรือไม่')) return;
   db.products = db.products.filter(p=>p.id!==id);
