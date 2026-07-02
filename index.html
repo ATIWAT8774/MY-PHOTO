@@ -422,13 +422,13 @@
           <i data-lucide="package" class="w-5 h-5"></i><span class="sidebar-text">จัดการสินค้า</span>
         </button>
         <button data-page="stock" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
-          <i data-lucide="warehouse" class="w-5 h-5"></i><span class="sidebar-text">สต๊อกสินค้า</span>
+          <i data-lucide="archive" class="w-5 h-5"></i><span class="sidebar-text">สต๊อกสินค้า</span>
         </button>
         <button data-page="returns" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
-          <i data-lucide="refresh-cw" class="w-5 h-5"></i><span class="sidebar-text">เปลี่ยน/คืนสินค้า</span>
+          <i data-lucide="rotate-cw" class="w-5 h-5"></i><span class="sidebar-text">เปลี่ยน/คืนสินค้า</span>
         </button>
         <button data-page="reports" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
-          <i data-lucide="bar-chart-3" class="w-5 h-5"></i><span class="sidebar-text">รายงาน</span>
+          <i data-lucide="bar-chart" class="w-5 h-5"></i><span class="sidebar-text">รายงาน</span>
         </button>
         <button data-page="settings" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
           <i data-lucide="settings" class="w-5 h-5"></i><span class="sidebar-text">ตั้งค่าระบบ</span>
@@ -818,7 +818,7 @@ function renderCart(){
   if(!cart.length){
     box.innerHTML = `
       <div class="h-full flex flex-col items-center justify-center text-gray-300">
-        <i data-lucide="shopping-bag" class="w-14 h-14"></i>
+        <i data-lucide="shopping-cart" class="w-14 h-14"></i>
         <p class="mt-3">ยังไม่มีสินค้าในตะกร้า</p>
       </div>`;
   } else {
@@ -891,7 +891,8 @@ function initEvents(){
   document.getElementById('pay-other').addEventListener('click', ()=>setPayment('other'));
   document.getElementById('btn-clear').addEventListener('click', ()=>{ if(confirm('ล้างตะกร้าหรือไม่')){ cart=[]; renderCart(); }});
   document.getElementById('btn-hold').addEventListener('click', holdBill);
-  document.getElementById('btn-checkout').addEventListener('click', checkout);
+  document.addEventListener('input', (e)=>{ if(e.target && e.target.id==='pm-barcode') renderModalBarcodePreview(e.target.value.trim()); });
+            document.getElementById('btn-checkout').addEventListener('click', checkout);
   document.addEventListener('input', (e)=>{ if(e.target && e.target.id==='product-barcode') renderSingleBarcodePreview(e.target.value.trim()); });
   document.getElementById('btn-no-print').addEventListener('click', closeSuccess);
   document.getElementById('btn-preview').addEventListener('click', previewReceipt);
@@ -1348,30 +1349,38 @@ function renderPrintBarcodes(){
 
 
 
+
 function openProductModal(id=''){
   const isEdit = !!id;
   const p = isEdit ? db.products.find(x=>x.id===id) : null;
+  const set = (field, val='') => {
+    const el = document.getElementById(field);
+    if(el) el.value = val;
+  };
+
   document.getElementById('product-modal-title').textContent = isEdit ? 'แก้ไขสินค้า' : 'เพิ่มสินค้า';
-  document.getElementById('pm-original-id').value = p?.id || '';
-  document.getElementById('pm-id').value = p?.id || '';
-  document.getElementById('pm-barcode').value = p?.barcode || '';
-  document.getElementById('pm-name').value = p?.name || '';
-  document.getElementById('pm-type').value = p?.type || '';
-  document.getElementById('pm-cat').value = p?.cat || '';
-  document.getElementById('pm-size').value = p?.size || '';
-  document.getElementById('pm-color').value = p?.color || '';
-  document.getElementById('pm-cost').value = p?.cost || '';
-  document.getElementById('pm-price').value = p?.price || '';
-  document.getElementById('pm-stock').value = p?.stock ?? '';
-  document.getElementById('pm-img').value = p?.img || '';
+  set('pm-original-id', p?.id || '');
+  set('pm-id', p?.id || '');
+  set('pm-barcode', p?.barcode || '');
+  set('pm-name', p?.name || '');
+  set('pm-type', p?.type || '');
+  set('pm-cat', p?.cat || '');
+  set('pm-size', p?.size || '');
+  set('pm-color', p?.color || '');
+  set('pm-cost', p?.cost ?? '');
+  set('pm-price', p?.price ?? '');
+  set('pm-stock', p?.stock ?? '');
+  set('pm-img', p?.img || '');
+
   document.getElementById('pm-delete-btn').classList.toggle('hidden', !isEdit);
   renderModalBarcodePreview(p?.barcode || '');
   document.getElementById('product-modal').classList.remove('hidden');
+
   setTimeout(()=>document.getElementById(isEdit ? 'pm-name' : 'pm-id')?.focus(),100);
-  lucide.createIcons();
+  if(window.lucide) lucide.createIcons();
 }
 function closeProductModal(){
-  document.getElementById('product-modal').classList.add('hidden');
+  document.getElementById('product-modal')?.classList.add('hidden');
 }
 function generateModalBarcode(){
   const code = typeof makeBarcode === 'function' ? makeBarcode() : ('24' + String(Date.now()).slice(-10));
@@ -1397,9 +1406,10 @@ function saveProductModal(e){
   const originalId = document.getElementById('pm-original-id').value.trim();
   const id = document.getElementById('pm-id').value.trim();
   const barcode = document.getElementById('pm-barcode').value.trim();
+  const name = document.getElementById('pm-name').value.trim();
 
   if(!id) return showToast('กรอกรหัสสินค้า');
-  if(!document.getElementById('pm-name').value.trim()) return showToast('กรอกชื่อสินค้า');
+  if(!name) return showToast('กรอกชื่อสินค้า');
 
   if(db.products.some(p=>p.id !== originalId && p.id === id)) return showToast('รหัสสินค้าซ้ำ');
   if(barcode && db.products.some(p=>p.id !== originalId && String(p.barcode || '') === barcode)) return showToast('บาร์โค้ดซ้ำ');
@@ -1407,7 +1417,7 @@ function saveProductModal(e){
   const product = {
     id,
     barcode,
-    name: document.getElementById('pm-name').value.trim(),
+    name,
     type: document.getElementById('pm-type').value.trim() || 'ทั่วไป',
     cat: document.getElementById('pm-cat').value.trim() || 'ทั่วไป',
     size: document.getElementById('pm-size').value.trim() || 'Free Size',
@@ -1609,7 +1619,7 @@ function renderProductsPage(){
         <div class="p-4 flex flex-wrap gap-2 justify-between items-center">
           <h3 class="text-xl font-bold">รายการสินค้า</h3>
           <div class="flex flex-wrap gap-2">
-            <button onclick="openReceiveModal()" class="px-4 py-2 rounded-xl bg-primary-soft text-primary font-semibold flex items-center gap-2"><i data-lucide="scan-barcode" class="w-4 h-4"></i>รับสินค้า</button>
+            <button onclick="openReceiveModal()" class="px-4 py-2 rounded-xl bg-primary-soft text-primary font-semibold flex items-center gap-2"><i data-lucide="scan-line" class="w-4 h-4"></i>รับสินค้า</button>
             <button onclick="printAllBarcodes()" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold flex items-center gap-2"><i data-lucide="printer" class="w-4 h-4"></i>พิมพ์บาร์โค้ดทั้งหมด</button>
           </div>
         </div>
