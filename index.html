@@ -640,9 +640,10 @@
         <h3 class="text-xl font-bold">รับสินค้าเข้าสต๊อก</h3>
         <button onclick="closeReceiveModal()" class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center"><i data-lucide="x"></i></button>
       </div>
-      <div class="flex gap-2 mb-3">
+      <div class="flex flex-col md:flex-row gap-2 mb-3">
         <input id="receive-scan-input" class="flex-1 p-4 soft-border rounded-2xl text-lg" placeholder="สแกน/พิมพ์บาร์โค้ด แล้วกด Enter">
         <button onclick="receiveScanManual()" class="px-4 bg-primary text-white rounded-2xl font-bold">เพิ่ม</button>
+        <button onclick="openReceiveCameraScanner()" class="px-4 bg-gray-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2"><i data-lucide="camera" class="w-5 h-5"></i>กล้อง</button>
       </div>
       <div id="receive-list" class="max-h-[45vh] overflow-auto border rounded-2xl p-3 bg-gray-50"></div>
       <div class="grid grid-cols-2 gap-2 mt-4">
@@ -1074,6 +1075,7 @@ function closeMobileCart(){
 }
 
 async function openCameraScanner(){
+  if(scannerMode !== 'receive') scannerMode = 'sale';
   playScanBeep();
   const modal = document.getElementById('scanner-modal');
   const status = document.getElementById('scanner-status');
@@ -1119,10 +1121,18 @@ async function openCameraScanner(){
         lastScannedCode = decodedText;
         lastScannedAt = now;
         status.textContent = 'พบรหัส: ' + decodedText;
-        const ok = addProductByCode(decodedText);
+        let ok = false;
+        if(scannerMode === 'receive'){
+          handleReceiveBarcode(decodedText);
+          ok = true;
+          status.textContent = 'เพิ่มในรายการรับสินค้าแล้ว';
+        }else{
+          ok = addProductByCode(decodedText);
+          if(ok) status.textContent = 'เพิ่มลงตะกร้าแล้ว';
+        }
         if(ok){
-          status.textContent = 'เพิ่มลงตะกร้าแล้ว';
           await closeCameraScanner();
+          scannerMode = 'sale';
         }
       },
       () => {}
@@ -1370,6 +1380,7 @@ function renderSingleBarcodePreview(code){
 let currentBarcodeProduct = null;
 let receiveItems = [];
 let pendingNewBarcode = '';
+let scannerMode = 'sale';
 let lastScannedCode = '';
 let lastScannedAt = 0;
 function showBarcode(id){
@@ -1560,6 +1571,10 @@ function openReceiveModal(){
   renderReceiveList();
   setTimeout(()=>document.getElementById('receive-scan-input')?.focus(),100);
   if(window.lucide) lucide.createIcons();
+}
+function openReceiveCameraScanner(){
+  scannerMode = 'receive';
+  openCameraScanner();
 }
 function closeReceiveModal(){
   document.getElementById('receive-modal')?.classList.add('hidden');
