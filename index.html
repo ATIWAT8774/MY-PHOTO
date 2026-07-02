@@ -590,6 +590,49 @@
     </main>
   </div>
 
+
+  <div id="product-modal" class="hidden fixed inset-0 bg-black/40 z-[88] flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-3xl p-6 max-w-2xl w-full card-shadow modal-card-mobile">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="product-modal-title" class="text-xl font-bold">เพิ่มสินค้า</h3>
+        <button onclick="closeProductModal()" class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center"><i data-lucide="x"></i></button>
+      </div>
+      <form onsubmit="saveProductModal(event)" class="space-y-2">
+        <input id="pm-original-id" type="hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <input id="pm-id" class="p-3 soft-border rounded-xl" placeholder="รหัสสินค้า">
+          <div class="grid grid-cols-2 gap-2">
+            <input id="pm-barcode" class="p-3 soft-border rounded-xl" placeholder="บาร์โค้ด">
+            <button type="button" onclick="generateModalBarcode()" class="bg-primary text-white rounded-xl font-semibold">สร้าง</button>
+          </div>
+        </div>
+        <input id="pm-name" class="w-full p-3 soft-border rounded-xl" placeholder="ชื่อสินค้า">
+        <div class="grid grid-cols-2 gap-2">
+          <input id="pm-type" class="p-3 soft-border rounded-xl" placeholder="ประเภท">
+          <input id="pm-cat" class="p-3 soft-border rounded-xl" placeholder="หมวดหมู่">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <input id="pm-size" class="p-3 soft-border rounded-xl" placeholder="ไซซ์">
+          <input id="pm-color" class="p-3 soft-border rounded-xl" placeholder="สี">
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <input id="pm-cost" type="number" class="p-3 soft-border rounded-xl" placeholder="ต้นทุน">
+          <input id="pm-price" type="number" class="p-3 soft-border rounded-xl" placeholder="ราคาขาย">
+          <input id="pm-stock" type="number" class="p-3 soft-border rounded-xl" placeholder="สต๊อก">
+        </div>
+        <input id="pm-img" class="w-full p-3 soft-border rounded-xl" placeholder="ลิงก์รูปสินค้า">
+        <div id="pm-barcode-preview" class="hidden bg-gray-50 rounded-2xl p-3 text-center">
+          <svg id="pm-barcode-svg"></svg>
+        </div>
+        <div class="grid grid-cols-3 gap-2 pt-3">
+          <button id="pm-delete-btn" type="button" onclick="deleteProductFromModal()" class="btn-touch bg-red-50 text-red-600 rounded-2xl font-bold hidden">ลบสินค้า</button>
+          <button type="button" onclick="closeProductModal()" class="btn-touch bg-gray-100 rounded-2xl font-bold">ยกเลิก</button>
+          <button class="btn-touch bg-primary text-white rounded-2xl font-bold">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="success-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 no-print">
     <div class="modal-card-mobile bg-white rounded-3xl p-8 max-w-md w-full text-center card-shadow">
       <div class="w-16 h-16 bg-primary-soft rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1351,6 +1394,11 @@ function renderPrintBarcodes(){
 
 
 function openProductModal(id=''){
+  const modal = document.getElementById('product-modal');
+  if(!modal){
+    alert('ไม่พบหน้าต่างแก้ไขสินค้า กรุณาใช้ไฟล์เวอร์ชันล่าสุด');
+    return;
+  }
   const isEdit = !!id;
   const p = isEdit ? db.products.find(x=>x.id===id) : null;
   const set = (field, val='') => {
@@ -1358,7 +1406,9 @@ function openProductModal(id=''){
     if(el) el.value = val;
   };
 
-  document.getElementById('product-modal-title').textContent = isEdit ? 'แก้ไขสินค้า' : 'เพิ่มสินค้า';
+  const title = document.getElementById('product-modal-title');
+  if(title) title.textContent = isEdit ? 'แก้ไขสินค้า' : 'เพิ่มสินค้า';
+
   set('pm-original-id', p?.id || '');
   set('pm-id', p?.id || '');
   set('pm-barcode', p?.barcode || '');
@@ -1372,9 +1422,11 @@ function openProductModal(id=''){
   set('pm-stock', p?.stock ?? '');
   set('pm-img', p?.img || '');
 
-  document.getElementById('pm-delete-btn').classList.toggle('hidden', !isEdit);
+  const del = document.getElementById('pm-delete-btn');
+  if(del) del.classList.toggle('hidden', !isEdit);
+
   renderModalBarcodePreview(p?.barcode || '');
-  document.getElementById('product-modal').classList.remove('hidden');
+  modal.classList.remove('hidden');
 
   setTimeout(()=>document.getElementById(isEdit ? 'pm-name' : 'pm-id')?.focus(),100);
   if(window.lucide) lucide.createIcons();
