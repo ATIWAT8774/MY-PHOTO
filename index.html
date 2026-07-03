@@ -4,23 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>งามตา SHOP - ระบบขายหน้าร้าน</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17">
-async function setupSheetsV2(){
-  try{
-    await callSheetApi('setup', {});
-    showToast('สร้าง/ตรวจชีต V2 แล้ว');
-  }catch(err){
-    console.error(err);
-    showToast('สร้างชีตไม่สำเร็จ');
-  }
-}
-
-</script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script>
+  
+<script>
+
+</script>
+<script>
     tailwind.config = {
       theme: {
         extend: {
@@ -429,7 +422,7 @@ async function setupSheetsV2(){
 window.safeCreateIcons = function(){
   try{
     if(window.lucide && typeof window.lucide.createIcons === 'function'){
-      window.lucide.createIcons();
+      window.safeCreateIcons();
     }
   }catch(e){
     console.warn('icons skipped', e);
@@ -474,7 +467,7 @@ window.addEventListener('error', function(e){
           <i data-lucide="rotate-cw" class="w-5 h-5"></i><span class="sidebar-text">เปลี่ยน/คืนสินค้า</span>
         </button>
         <button data-page="reports" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
-          <i data-lucide="bar-chart-2" class="w-5 h-5"></i><span class="sidebar-text">รายงาน</span>
+          <i data-lucide="bar-chart" class="w-5 h-5"></i><span class="sidebar-text">รายงาน</span>
         </button>
         <button data-page="members" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
           <i data-lucide="user" class="w-5 h-5"></i><span class="sidebar-text">สมาชิก</span>
@@ -593,7 +586,7 @@ window.addEventListener('error', function(e){
                   <i data-lucide="smartphone" class="w-4 h-4"></i>โอน
                 </button>
                 <button id="pay-project" class="pay-btn py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold flex items-center justify-center gap-1">
-                  <i data-lucide="badge-percent" class="w-4 h-4"></i>โครงการ
+                  <i data-lucide="percent" class="w-4 h-4"></i>โครงการ
                 </button>
                 <button id="pay-other" class="pay-btn py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold flex items-center justify-center gap-1">
                   <i data-lucide="credit-card" class="w-4 h-4"></i>อื่น ๆ
@@ -2756,7 +2749,7 @@ function renderSettingsPage(){
       <label class="font-semibold">ข้อความท้ายบิล</label>
       <input id="set-footer" value="${db.settings.receiptFooter || db.settings.footer || 'ขอบคุณที่ใช้บริการ'}" class="w-full p-4 soft-border rounded-2xl">
       <label class="font-semibold">Google Apps Script Web App URL</label>
-      <input id="set-sheet-api" value="${db.settings.sheetApiUrl || \'https://script.google.com/macros/s/AKfycbw0zAIkaMoUe9LKH-x8LTEDP2B24bzgxJVqMOgvvbV3Y8GLkuMaTb76XeRUF_qNRzSo2A/exec\'}" placeholder="วาง URL ที่ลงท้าย /exec" class="w-full p-4 soft-border rounded-2xl">
+      <input id="set-sheet-api" value="${db.settings.sheetApiUrl || 'https://script.google.com/macros/s/AKfycbw0zAIkaMoUe9LKH-x8LTEDP2B24bzgxJVqMOgvvbV3Y8GLkuMaTb76XeRUF_qNRzSo2A/exec'}" placeholder="วาง URL ที่ลงท้าย /exec" class="w-full p-4 soft-border rounded-2xl">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2 pt-2">
         <button class="btn-touch px-6 bg-primary text-white rounded-2xl font-bold">บันทึกตั้งค่า</button>
         <button type="button" onclick="setupSheetsV2()" class="btn-touch px-6 bg-primary-soft text-primary rounded-2xl font-bold">สร้าง/ตรวจชีต</button>
@@ -2964,6 +2957,17 @@ async function clearSheetsData(){
     showToast('ล้างข้อมูลชีตไม่สำเร็จ');
   }
 }
+
+async function setupSheetsV2(){
+  try{
+    await callSheetApi('setup', {});
+    showToast('สร้าง/ตรวจชีต V2 แล้ว');
+  }catch(err){
+    console.error(err);
+    showToast('สร้างชีตไม่สำเร็จ');
+  }
+}
+
 </script>
 </body>
 </html>
