@@ -545,7 +545,9 @@ window.addEventListener('error', function(e){
                 <span class="text-sm font-semibold">สมาชิก</span>
                 <button onclick="openMemberModal()" class="text-xs text-primary font-bold">เพิ่มสมาชิก</button>
               </div>
-              <select id="member-select" onchange="selectMemberForCart(this.value)" class="w-full p-3 soft-border rounded-xl text-sm"></select>
+              <input id="member-search" oninput="renderMemberSearchResults(this.value)" placeholder="ค้นหารหัส / ชื่อ / เบอร์โทร" class="w-full p-3 soft-border rounded-xl text-sm">
+              <div id="member-search-results" class="mt-2 space-y-1"></div>
+              <div id="selected-member-box" class="hidden mt-2 p-3 rounded-2xl bg-primary-soft text-sm"></div>
             </div>
             <div class="px-5 py-3 border-t border-gray-100">
               <div class="flex items-center justify-between mb-2">
@@ -572,12 +574,15 @@ window.addEventListener('error', function(e){
 
             <div class="px-5 py-3 border-t border-gray-100">
               <span class="text-sm font-semibold block mb-2">ช่องทางการชำระเงิน</span>
-              <div class="grid grid-cols-3 gap-2">
+              <div class="grid grid-cols-4 gap-2">
                 <button id="pay-cash" class="pay-btn py-3 rounded-xl bg-primary text-white font-semibold flex items-center justify-center gap-1">
                   <i data-lucide="banknote" class="w-4 h-4"></i>เงินสด
                 </button>
                 <button id="pay-transfer" class="pay-btn py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold flex items-center justify-center gap-1">
                   <i data-lucide="smartphone" class="w-4 h-4"></i>โอน
+                </button>
+                <button id="pay-project" class="pay-btn py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold flex items-center justify-center gap-1">
+                  <i data-lucide="badge-percent" class="w-4 h-4"></i>โครงการ
                 </button>
                 <button id="pay-other" class="pay-btn py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold flex items-center justify-center gap-1">
                   <i data-lucide="credit-card" class="w-4 h-4"></i>อื่น ๆ
@@ -590,6 +595,20 @@ window.addEventListener('error', function(e){
                 <div class="flex justify-between text-base">
                   <span class="text-gray-500">เงินทอน</span>
                   <span id="change-amount" class="font-bold text-primary">0.00 บาท</span>
+                </div>
+              </div>
+
+              <div id="project-section" class="mt-3 hidden space-y-2">
+                <div class="grid grid-cols-2 gap-2">
+                  <input id="project-used" type="number" min="0" max="333" placeholder="ใช้โครงการ ไม่เกิน 333" class="w-full px-4 py-3 soft-border rounded-xl focus:outline-none">
+                  <select id="project-diff-method" class="w-full px-4 py-3 soft-border rounded-xl focus:outline-none">
+                    <option value="cash">ส่วนต่างเงินสด</option>
+                    <option value="transfer">ส่วนต่างโอน</option>
+                  </select>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-500">ส่วนต่างที่ต้องชำระ</span>
+                  <span id="project-diff-display" class="font-bold text-primary">0.00 บาท</span>
                 </div>
               </div>
 
@@ -638,6 +657,20 @@ window.addEventListener('error', function(e){
 
 
 
+
+  <div id="stock-group-modal" class="hidden fixed inset-0 bg-black/40 z-[93] flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-3xl p-6 max-w-3xl w-full card-shadow modal-card-mobile">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 id="stock-group-title" class="text-xl font-bold">รายละเอียดสต๊อก</h3>
+          <p id="stock-group-sub" class="text-sm text-gray-500"></p>
+        </div>
+        <button onclick="closeStockGroupModal()" class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center"><i data-lucide="x"></i></button>
+      </div>
+      <div id="stock-group-content"></div>
+    </div>
+  </div>
+
   <div id="member-modal" class="hidden fixed inset-0 bg-black/40 z-[92] flex items-center justify-center p-4 no-print">
     <div class="bg-white rounded-3xl p-6 max-w-xl w-full card-shadow modal-card-mobile">
       <div class="flex items-center justify-between mb-4">
@@ -646,6 +679,10 @@ window.addEventListener('error', function(e){
       </div>
       <form onsubmit="saveMemberModal(event)" class="space-y-2">
         <input id="member-original-id" type="hidden">
+        <div class="grid grid-cols-2 gap-2">
+          <input id="member-code" class="p-3 soft-border rounded-xl" placeholder="รหัสสมาชิก เช่น A001">
+          <button type="button" onclick="generateMemberCode()" class="bg-primary text-white rounded-xl font-semibold">สร้างรหัส</button>
+        </div>
         <input id="member-name" class="w-full p-3 soft-border rounded-xl" placeholder="ชื่อลูกค้า">
         <input id="member-phone" class="w-full p-3 soft-border rounded-xl" placeholder="เบอร์โทร">
         <input id="member-note" class="w-full p-3 soft-border rounded-xl" placeholder="หมายเหตุ">
@@ -678,6 +715,7 @@ window.addEventListener('error', function(e){
           </div>
         </div>
         <input id="pm-name" class="w-full p-3 soft-border rounded-xl" placeholder="ชื่อสินค้า">
+        <input id="pm-number" class="w-full p-3 soft-border rounded-xl" placeholder="Number ตั้งต้น เช่น 2026 (ไม่กรอก ระบบออกให้)">
         <div class="grid grid-cols-2 gap-2">
           <input id="pm-type" class="p-3 soft-border rounded-xl" placeholder="ประเภท">
           <input id="pm-cat" class="p-3 soft-border rounded-xl" placeholder="หมวดหมู่">
@@ -770,6 +808,7 @@ window.addEventListener('error', function(e){
       <form onsubmit="saveNewProductFromScan(event)" class="space-y-2">
         <input id="new-barcode" class="w-full p-3 soft-border rounded-xl bg-gray-50" readonly>
         <input id="new-name" class="w-full p-3 soft-border rounded-xl" placeholder="ชื่อสินค้า">
+        <input id="new-number" class="w-full p-3 soft-border rounded-xl" placeholder="Number ตั้งต้น เช่น 2026 (ไม่กรอก ระบบออกให้)">
         <div class="grid grid-cols-2 gap-2">
           <input id="new-type" class="p-3 soft-border rounded-xl" placeholder="ประเภท">
           <input id="new-cat" class="p-3 soft-border rounded-xl" placeholder="หมวดหมู่">
@@ -1122,6 +1161,10 @@ function updateSummary(){
   document.getElementById('net-total').textContent = money(net);
   const cash = Number(document.getElementById('cash-received').value)||0;
   document.getElementById('change-amount').textContent = money(Math.max(0,cash-net));
+  const projectUsed = Math.min(333, Math.max(0, Number(document.getElementById('project-used')?.value)||0));
+  const projectDiff = Math.max(0, net - projectUsed);
+  const pd = document.getElementById('project-diff-display');
+  if(pd) pd.textContent = money(projectDiff);
 }
 
 function initEvents(){
@@ -1136,7 +1179,10 @@ function initEvents(){
   document.getElementById('cash-received').addEventListener('input', updateSummary);
   document.getElementById('pay-cash').addEventListener('click', ()=>setPayment('cash'));
   document.getElementById('pay-transfer').addEventListener('click', ()=>setPayment('transfer'));
+  document.getElementById('pay-project')?.addEventListener('click', ()=>setPayment('project'));
   document.getElementById('pay-other').addEventListener('click', ()=>setPayment('other'));
+  document.getElementById('project-used')?.addEventListener('input', updateSummary);
+  document.getElementById('project-diff-method')?.addEventListener('change', updateSummary);
   document.getElementById('btn-clear').addEventListener('click', ()=>{ if(confirm('ล้างตะกร้าหรือไม่')){ cart=[]; renderCart(); }});
   document.getElementById('btn-hold').addEventListener('click', holdBill);
   document.addEventListener('input', (e)=>{ if(e.target && e.target.id==='pm-barcode') renderModalBarcodePreview(e.target.value.trim()); });
@@ -1168,10 +1214,13 @@ function setDiscountType(type){
 function setPayment(method){
   paymentMethod = method;
   document.querySelectorAll('.pay-btn').forEach(b=>{ b.classList.remove('bg-primary','text-white'); b.classList.add('bg-gray-100','text-gray-600'); });
-  const active = document.getElementById(method==='cash'?'pay-cash':method==='transfer'?'pay-transfer':'pay-other');
-  active.classList.add('bg-primary','text-white'); active.classList.remove('bg-gray-100','text-gray-600');
+  const idMap = {cash:'pay-cash', transfer:'pay-transfer', project:'pay-project', other:'pay-other'};
+  const active = document.getElementById(idMap[method] || 'pay-cash');
+  if(active){ active.classList.add('bg-primary','text-white'); active.classList.remove('bg-gray-100','text-gray-600'); }
   document.getElementById('cash-section').classList.toggle('hidden', method!=='cash');
+  document.getElementById('project-section')?.classList.toggle('hidden', method!=='project');
   document.getElementById('other-section').classList.toggle('hidden', method!=='other');
+  updateSummary();
 }
 
 
@@ -1354,15 +1403,32 @@ function checkout(){
   if(!cart.length) return showToast('ยังไม่มีสินค้าในตะกร้า');
   const sub = subtotal(), disc = discountAmount(), net = Math.max(0, sub-disc);
   const cash = Number(document.getElementById('cash-received').value)||0;
+  const projectUsedRaw = Number(document.getElementById('project-used')?.value)||0;
+  const projectUsed = Math.min(333, Math.max(0, projectUsedRaw, 0));
+  const projectDiff = Math.max(0, net - projectUsed);
+  const projectDiffMethod = document.getElementById('project-diff-method')?.value || 'cash';
+
   if(paymentMethod==='cash' && cash < net) return showToast('รับเงินไม่พอ');
+  if(paymentMethod==='project'){
+    if(projectUsed <= 0) return showToast('กรอกยอดใช้โครงการ');
+    if(projectUsedRaw > 333) return showToast('โครงการใช้สิทธิได้สูงสุด 333 บาท');
+    if(projectUsed > net) return showToast('ยอดโครงการเกินยอดสุทธิ');
+  }
+
   const billNo = 'INV-' + new Date().toISOString().slice(0,10).replaceAll('-','') + '-' + String(db.bills.length+1).padStart(4,'0');
   const bill = {
     billNo, items: cart.map(i=>({...i})), subtotal: sub, discount: disc, discountType,
     discountValue: Number(document.getElementById('discount-value').value)||0,
     discountReason: document.getElementById('discount-reason').value || '',
     netTotal: net, paymentMethod,
-    paymentText: paymentMethod==='cash'?'เงินสด':paymentMethod==='transfer'?'โอนเงิน':document.getElementById('other-type').value,
+    paymentText: paymentMethod==='cash'?'เงินสด':paymentMethod==='transfer'?'โอนเงิน':paymentMethod==='project'?'โครงการ':document.getElementById('other-type').value,
     otherDetail: paymentMethod==='other'?document.getElementById('other-detail').value:'',
+    projectUsed: paymentMethod==='project'?projectUsed:0,
+    projectDiff: paymentMethod==='project'?projectDiff:0,
+    projectDiffMethod: paymentMethod==='project'?projectDiffMethod:'',
+    cashPart: paymentMethod==='cash'?net:(paymentMethod==='project' && projectDiffMethod==='cash'?projectDiff:0),
+    transferPart: paymentMethod==='transfer'?net:(paymentMethod==='project' && projectDiffMethod==='transfer'?projectDiff:0),
+    projectPart: paymentMethod==='project'?projectUsed:0,
     cashReceived: paymentMethod==='cash'?cash:net,
     change: paymentMethod==='cash'?Math.max(0,cash-net):0,
     cashier: db.settings.cashier,
@@ -1374,23 +1440,27 @@ function checkout(){
     if(p) p.stock -= item.qty;
   });
   if(selectedCustomerId){
-                const cust = db.customers?.find(c=>c.id===selectedCustomerId);
-                if(cust){
-                  bill.customerId = cust.id;
-                  bill.customerName = cust.name;
-                  bill.customerPhone = cust.phone || '';
-                  cust.totalSpend = (Number(cust.totalSpend)||0) + (Number(bill.netTotal)||0);
-                  cust.points = (Number(cust.points)||0) + Math.floor((Number(bill.netTotal)||0)/100);
-                  cust.lastPurchaseAt = new Date().toISOString();
-                }
-              }
-              db.bills.push(bill);
+    const cust = db.customers?.find(c=>c.id===selectedCustomerId);
+    if(cust){
+      bill.customerId = cust.id;
+      bill.customerCode = cust.code || cust.id;
+      bill.customerName = cust.name;
+      bill.customerPhone = cust.phone || '';
+      cust.totalSpend = (Number(cust.totalSpend)||0) + (Number(bill.netTotal)||0);
+      cust.points = (Number(cust.points)||0) + Math.floor((Number(bill.netTotal)||0)/100);
+      cust.lastPurchaseAt = new Date().toISOString();
+    }
+  }
+  db.bills.push(bill);
   saveDB();
   autoSyncBillToSheets(bill);
   lastBill = bill;
   cart = [];
+  selectedCustomerId = '';
   document.getElementById('discount-value').value = '';
   document.getElementById('cash-received').value = '';
+  const pu = document.getElementById('project-used'); if(pu) pu.value='';
+  const ms = document.getElementById('member-search'); if(ms) ms.value='';
   renderProducts(); renderCart(); renderAllPages(); updateTodaySales();
   document.getElementById('success-bill').textContent = billNo + ' | ยอดสุทธิ ' + money(net);
   document.getElementById('success-modal').classList.remove('hidden');
@@ -1423,6 +1493,7 @@ function receiptHTML(bill){
       <div style="display:flex; justify-content:space-between;">ส่วนลด<span>${bill.discount.toFixed(2)}</span></div>
       <div style="display:flex; justify-content:space-between; font-size:16px;"><b>ยอดสุทธิ</b><b>${bill.netTotal.toFixed(2)}</b></div>
       <div>ชำระ: ${bill.paymentText}${bill.otherDetail ? ' - '+bill.otherDetail : ''}</div>
+      ${bill.paymentMethod==='project' ? `<div>โครงการ: ${Number(bill.projectPart||0).toFixed(2)}</div><div>ส่วนต่าง${bill.projectDiffMethod==='transfer'?'โอน':'เงินสด'}: ${Number(bill.projectDiff||0).toFixed(2)}</div>` : ''}
       ${bill.paymentMethod==='cash' ? `<div>รับเงิน: ${bill.cashReceived.toFixed(2)}</div><div>เงินทอน: ${bill.change.toFixed(2)}</div>` : ''}
       <hr>
       <div style="text-align:center;">${db.settings.receiptFooter}</div>
@@ -1542,17 +1613,13 @@ function generateBarcode(){
   renderSingleBarcodePreview(code);
 }
 function generateProductCode(){
-  const name = document.getElementById('product-name')?.value || 'ITEM';
-  const color = document.getElementById('product-color')?.value || 'COLOR';
-  const size = document.getElementById('product-size')?.value || 'SIZE';
-  const base = `${slugPart(name,5)}-${slugPart(color,3)}-${slugPart(size,4)}`;
-  let id = base;
-  let n = 1;
-  while(db.products.some(p=>p.id===id)){
-    id = `${base}-${n++}`;
-  }
-  document.getElementById('product-id').value = id;
+  const number = document.getElementById('product-number')?.value || '';
+  const color = document.getElementById('product-color')?.value || '';
+  const size = document.getElementById('product-size')?.value || '';
+  const currentId = document.getElementById('product-id')?.value || '';
+  document.getElementById('product-id').value = makeProductIdFromParts(number, color, size, currentId);
 }
+
 function renderSingleBarcodePreview(code){
   const wrap = document.getElementById('single-barcode-preview');
   const svg = document.getElementById('single-barcode-svg');
@@ -1685,6 +1752,45 @@ function getSelectedSize(id){
   return value;
 }
 
+
+function normalizeCodePart(text){
+  return String(text || '')
+    .trim()
+    .replace(/\s+/g,'')
+    .replace(/[\/\\|]/g,'-') || '';
+}
+function getNextProductNumber(){
+  let maxNum = 2025;
+  db.products.forEach(p=>{
+    const first = String(p.id || '').split('-')[0];
+    const n = Number(first);
+    if(Number.isFinite(n) && n > maxNum) maxNum = n;
+  });
+  return String(maxNum + 1);
+}
+function makeProductIdFromParts(numberValue, colorValue, sizeValue, currentId=''){
+  let baseNumber = normalizeCodePart(numberValue);
+  const color = normalizeCodePart(colorValue) || 'สี';
+  const size = normalizeCodePart(sizeValue) || 'SIZE';
+
+  if(!baseNumber) baseNumber = getNextProductNumber();
+
+  let id = `${baseNumber}-${color}-${size}`;
+  let run = 1;
+  while(db.products.some(p => p.id !== currentId && p.id === id)){
+    if(numberValue){
+      id = `${baseNumber}-${color}-${size}-${run++}`;
+    }else{
+      baseNumber = String(Number(baseNumber) + 1);
+      id = `${baseNumber}-${color}-${size}`;
+    }
+  }
+  return id;
+}
+function splitProductNumberFromId(id){
+  return String(id || '').split('-')[0] || '';
+}
+
 function openProductModal(id=''){
   const modal = document.getElementById('product-modal');
   if(!modal){
@@ -1705,6 +1811,7 @@ function openProductModal(id=''){
   set('pm-id', p?.id || '');
   set('pm-barcode', p?.barcode || '');
   set('pm-name', p?.name || '');
+  set('pm-number', p?.number || splitProductNumberFromId(p?.id || ''));
   set('pm-type', p?.type || '');
   set('pm-cat', p?.cat || '');
   setSizeSelectValue('pm-size', p?.size || '');
@@ -1748,10 +1855,14 @@ function renderModalBarcodePreview(code){
 function saveProductModal(e){
   e.preventDefault();
   const originalId = document.getElementById('pm-original-id').value.trim();
-  const id = document.getElementById('pm-id').value.trim();
+  const numberValue = document.getElementById('pm-number')?.value.trim() || '';
   const barcode = document.getElementById('pm-barcode').value.trim();
   const name = document.getElementById('pm-name').value.trim();
+  const colorValue = document.getElementById('pm-color').value.trim();
+  const sizeValue = getSelectedSize('pm-size') || 'Free Size';
+  const id = makeProductIdFromParts(numberValue, colorValue, sizeValue, originalId);
 
+  document.getElementById('pm-id').value = id;
   if(!id) return showToast('กรอกรหัสสินค้า');
   if(!name) return showToast('กรอกชื่อสินค้า');
 
@@ -1764,8 +1875,9 @@ function saveProductModal(e){
     name,
     type: document.getElementById('pm-type').value.trim() || 'ทั่วไป',
     cat: document.getElementById('pm-cat').value.trim() || 'ทั่วไป',
-    size: getSelectedSize('pm-size') || 'Free Size',
-    color: document.getElementById('pm-color').value.trim() || '-',
+    number: numberValue || splitProductNumberFromId(id),
+    size: sizeValue,
+    color: colorValue || '-',
     cost: Number(document.getElementById('pm-cost').value) || 0,
     price: Number(document.getElementById('pm-price').value) || 0,
     stock: Number(document.getElementById('pm-stock').value) || 0,
@@ -1840,7 +1952,7 @@ function handleReceiveBarcode(code){
   }
   pendingNewBarcode = cleaned;
   document.getElementById('new-barcode').value = cleaned;
-  ['new-name','new-type','new-cat','new-size','new-color','new-cost','new-price','new-img'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['new-name','new-number','new-type','new-cat','new-size','new-color','new-cost','new-price','new-img'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('new-qty').value = 1;
   document.getElementById('new-product-modal').classList.remove('hidden');
   setTimeout(()=>document.getElementById('new-name')?.focus(),100);
@@ -1850,16 +1962,18 @@ function saveNewProductFromScan(e){
   const barcode = document.getElementById('new-barcode').value.trim();
   const name = document.getElementById('new-name').value.trim();
   if(!name) return showToast('กรอกชื่อสินค้า');
-  let base = name.replace(/\s+/g,'').toUpperCase().slice(0,8) || 'ITEM';
-  let id = base, n = 1;
-  while(db.products.some(p=>p.id===id)) id = base + '-' + n++;
   const qty = Number(document.getElementById('new-qty').value) || 1;
+  const numberValue = document.getElementById('new-number')?.value.trim() || '';
+  const colorValue = document.getElementById('new-color').value.trim();
+  const sizeValue = getSelectedSize('new-size') || 'Free Size';
+  const id = makeProductIdFromParts(numberValue, colorValue, sizeValue);
   const product = {
     id, barcode, name,
+    number: numberValue || splitProductNumberFromId(id),
     type: document.getElementById('new-type').value.trim() || 'ทั่วไป',
     cat: document.getElementById('new-cat').value.trim() || 'ทั่วไป',
-    size: getSelectedSize('new-size') || 'Free Size',
-    color: document.getElementById('new-color').value.trim() || '-',
+    size: sizeValue,
+    color: colorValue || '-',
     cost: Number(document.getElementById('new-cost').value) || 0,
     price: Number(document.getElementById('new-price').value) || 0,
     stock: 0,
@@ -1950,6 +2064,7 @@ function renderProductsPage(){
           <p class="text-xs text-gray-400 mt-1">ถ้าสินค้ามีบาร์โค้ดจากโรงงานอยู่แล้ว ให้สแกนหรือพิมพ์ลงช่องนี้ ไม่ต้องกดสร้างใหม่</p>
         </div>
         <input id="product-name" placeholder="ชื่อสินค้า เช่น เสื้อยืด Basic" class="w-full p-3 soft-border rounded-xl">
+        <input id="product-number" placeholder="Number ตั้งต้น เช่น 2026 (ไม่กรอก ระบบออกให้)" class="w-full p-3 soft-border rounded-xl">
         <div class="grid grid-cols-2 gap-2">
           <input id="product-type" placeholder="ประเภท เช่น เสื้อ / กางเกง" class="w-full p-3 soft-border rounded-xl">
           <input id="product-cat" placeholder="หมวดหมู่ เช่น เสื้อยืด / ยีนส์" class="w-full p-3 soft-border rounded-xl">
@@ -2037,9 +2152,12 @@ function renderProductsPage(){
 function saveProduct(e){
   e.preventDefault();
   let id = document.getElementById('product-id').value.trim();
+  const numberValue = document.getElementById('product-number')?.value.trim() || '';
+  const colorValue = document.getElementById('product-color').value.trim();
+  const sizeValue = getSelectedSize('product-size') || 'Free Size';
   if(!id){
-    generateProductCode();
-    id = document.getElementById('product-id').value.trim();
+    id = makeProductIdFromParts(numberValue, colorValue, sizeValue);
+    document.getElementById('product-id').value = id;
   }
   let barcode = document.getElementById('product-barcode').value.trim();
   // ไม่บังคับสร้างบาร์โค้ด: ถ้าสินค้ามีบาร์โค้ดเดิมให้ใส่เองได้ ถ้าเว้นว่างจะยังบันทึกสินค้าได้
@@ -2049,10 +2167,11 @@ function saveProduct(e){
   const p = {
     id,
     barcode,
+    number: numberValue || splitProductNumberFromId(id),
     name:document.getElementById('product-name').value.trim(),
     type:document.getElementById('product-type').value.trim() || 'ทั่วไป',
-    size:getSelectedSize('product-size') || 'Free Size',
-    color:document.getElementById('product-color').value.trim() || '-',
+    size:sizeValue,
+    color:colorValue || '-',
     price:Number(document.getElementById('product-price').value)||0,
     cost:Number(document.getElementById('product-cost').value)||0,
     stock:Number(document.getElementById('product-stock').value)||0,
@@ -2071,18 +2190,27 @@ function deleteProduct(id){
   saveDB(); renderCategories(); renderProducts(); renderAllPages();
 }
 
+function stockGroupKey(p){
+  return `${p.name||''}||${p.type||''}||${p.cat||''}`;
+}
+function groupedStock(){
+  const map = new Map();
+  db.products.forEach(p=>{
+    const key = stockGroupKey(p);
+    if(!map.has(key)) map.set(key, {key, name:p.name, type:p.type||'ทั่วไป', cat:p.cat||'ทั่วไป', img:p.img||'', items:[], total:0});
+    const g = map.get(key);
+    g.items.push(p);
+    g.total += Number(p.stock)||0;
+    if(!g.img && p.img) g.img = p.img;
+  });
+  return Array.from(map.values());
+}
 function renderStockPage(){
   const typeFilter = localStorage.getItem(KEY+'_stock_type') || 'ทั้งหมด';
-  const sizeFilter = localStorage.getItem(KEY+'_stock_size') || 'ทั้งหมด';
   const types = ['ทั้งหมด', ...new Set(db.products.map(p=>p.type||'ทั่วไป'))];
-  const sizes = ['ทั้งหมด', ...new Set(db.products.map(p=>p.size||'-'))];
-  const list = db.products.filter(p => 
-    (typeFilter==='ทั้งหมด' || (p.type||'ทั่วไป')===typeFilter) &&
-    (sizeFilter==='ทั้งหมด' || (p.size||'-')===sizeFilter)
-  );
-
+  const groups = groupedStock().filter(g => typeFilter==='ทั้งหมด' || g.type===typeFilter);
   const box = document.getElementById('page-stock');
-  box.innerHTML = pageTitle('สต๊อกสินค้าเสื้อผ้า','ตรวจสอบตามประเภทสินค้าและไซซ์') + `
+  box.innerHTML = pageTitle('สต๊อกสินค้า','รวมรุ่นเดียวกัน แล้วกดดูสี/ไซซ์แยกในป๊อปอัพ') + `
     <div class="bg-white rounded-3xl card-shadow p-4 mb-5 flex flex-wrap gap-3 items-center">
       <div>
         <label class="text-sm text-gray-500">ประเภทสินค้า</label>
@@ -2090,38 +2218,51 @@ function renderStockPage(){
           ${types.map(t=>`<option ${t===typeFilter?'selected':''}>${t}</option>`).join('')}
         </select>
       </div>
-      <div>
-        <label class="text-sm text-gray-500">ไซซ์</label>
-        <select onchange="setStockFilter('size', this.value)" class="block p-3 soft-border rounded-xl min-w-44">
-          ${sizes.map(s=>`<option ${s===sizeFilter?'selected':''}>${s}</option>`).join('')}
-        </select>
-      </div>
       <div class="ml-auto text-right">
-        <p class="text-sm text-gray-500">จำนวนรายการที่แสดง</p>
-        <p class="text-2xl font-bold text-primary">${list.length}</p>
+        <p class="text-sm text-gray-500">จำนวนรุ่น</p>
+        <p class="text-2xl font-bold text-primary">${groups.length}</p>
       </div>
     </div>
-
-    <div class="bg-white rounded-3xl card-shadow overflow-hidden">
-      <table class="responsive-table w-full text-left">
-        <thead class="bg-gray-50 text-gray-500"><tr><th class="p-4">สินค้า</th><th>ประเภท</th><th>ไซซ์/สี</th><th>คงเหลือ</th><th>สถานะ</th><th class="text-right p-4">ปรับสต๊อก</th></tr></thead>
-        <tbody>${list.map(p=>`
-          <tr class="border-t border-gray-100">
-            <td class="p-4"><b>${p.name}</b><br><span class="text-sm text-gray-400">${p.id} | ${p.barcode||'-'}</span></td>
-            <td>${p.type || '-'}<br><span class="text-sm text-gray-500">${p.cat || '-'}</span></td>
-            <td>ไซซ์ ${p.size || '-'}<br><span class="text-sm text-gray-500">สี ${p.color || '-'}</span></td>
-            <td class="font-bold">${p.stock}</td>
-            <td>${p.stock<=0?'<span class="text-red-600">หมด</span>':p.stock<=5?'<span class="text-orange-500">ใกล้หมด</span>':'<span class="text-green-600">ปกติ</span>'}</td>
-            <td class="p-4 text-right">
-              <input id="stock-${p.id}" type="number" class="w-24 p-2 soft-border rounded-xl" placeholder="+/-">
-              <button onclick="adjustStock('${p.id}')" class="px-3 py-2 bg-primary text-white rounded-xl font-semibold">บันทึก</button>
-            </td>
-          </tr>`).join('') || `<tr><td colspan="6" class="p-8 text-center text-gray-400">ไม่พบสินค้าตามตัวกรอง</td></tr>`}</tbody>
-      </table>
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      ${groups.map(g=>`
+        <button onclick="openStockGroup('${encodeURIComponent(g.key)}')" class="text-left bg-white rounded-3xl card-shadow p-4 hover:ring-2 hover:ring-primary/30 transition">
+          <div class="flex gap-3">
+            <div class="w-20 h-20 rounded-2xl bg-gray-50 overflow-hidden shrink-0"><img src="${g.img||''}" onerror="this.src='https://placehold.co/200x200?text=Stock'" class="w-full h-full object-cover"></div>
+            <div class="min-w-0 flex-1">
+              <h3 class="font-bold truncate">${g.name}</h3>
+              <p class="text-sm text-gray-500">${g.type} | ${g.cat}</p>
+              <p class="text-2xl font-bold text-primary mt-1">${g.total} ชิ้น</p>
+              <p class="text-xs text-gray-400">${g.items.length} แบบสี/ไซซ์</p>
+            </div>
+          </div>
+        </button>`).join('') || '<div class="col-span-full bg-white rounded-3xl p-8 text-center text-gray-400">ยังไม่มีสินค้า</div>'}
     </div>`;
 }
+function openStockGroup(encodedKey){
+  const key = decodeURIComponent(encodedKey);
+  const g = groupedStock().find(x=>x.key===key);
+  if(!g) return;
+  document.getElementById('stock-group-title').textContent = g.name;
+  document.getElementById('stock-group-sub').textContent = `${g.type} | ${g.cat} | รวม ${g.total} ชิ้น`;
+  const colors = [...new Set(g.items.map(i=>i.color||'-'))];
+  document.getElementById('stock-group-content').innerHTML = colors.map(color=>{
+    const items = g.items.filter(i=>(i.color||'-')===color).sort((a,b)=>String(a.size||'').localeCompare(String(b.size||''), 'th'));
+    const total = items.reduce((s,i)=>s+(Number(i.stock)||0),0);
+    return `<div class="mb-4 rounded-3xl border border-gray-100 overflow-hidden">
+      <div class="px-4 py-3 bg-gray-50 flex justify-between"><b>สี ${color}</b><b class="text-primary">${total} ชิ้น</b></div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-2 p-3">
+        ${items.map(i=>`<div class="rounded-2xl bg-white border border-gray-100 p-3"><div class="text-sm text-gray-500">ไซซ์</div><div class="text-xl font-bold">${i.size||'-'}</div><div class="text-primary font-bold">x${i.stock}</div><div class="text-xs text-gray-400">${i.barcode||i.id}</div></div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('stock-group-modal').classList.remove('hidden');
+  safeCreateIcons();
+}
+function closeStockGroupModal(){
+  document.getElementById('stock-group-modal')?.classList.add('hidden');
+}
 function setStockFilter(kind, value){
-  localStorage.setItem(KEY + (kind==='type' ? '_stock_type' : '_stock_size'), value);
+  localStorage.setItem(KEY + '_stock_type', value);
   renderStockPage();
 }
 function adjustStock(id){
@@ -2365,15 +2506,56 @@ function getReportRange(period){
 function ensureCustomers(){
   if(!db.customers) db.customers = [];
 }
-function renderMemberSelect(){
+function makeMemberCode(){
   ensureCustomers();
-  const sel = document.getElementById('member-select');
-  if(!sel) return;
-  sel.innerHTML = `<option value="">ไม่ระบุสมาชิก</option>` + db.customers.map(c=>`<option value="${c.id}" ${selectedCustomerId===c.id?'selected':''}>${c.name} | ${c.phone || '-'}</option>`).join('');
+  let max = 0;
+  db.customers.forEach(c=>{
+    const code = String(c.code || c.id || '');
+    const m = code.match(/^A(\d{3,})$/i);
+    if(m) max = Math.max(max, Number(m[1]));
+  });
+  return 'A' + String(max + 1).padStart(3,'0');
+}
+function generateMemberCode(){
+  const el = document.getElementById('member-code');
+  if(el && !el.value) el.value = makeMemberCode();
+}
+function renderMemberSelect(){
+  renderMemberSearchResults(document.getElementById('member-search')?.value || '');
+  renderSelectedMemberBox();
+}
+function renderMemberSearchResults(q=''){
+  ensureCustomers();
+  const box = document.getElementById('member-search-results');
+  if(!box) return;
+  const text = String(q||'').trim().toLowerCase();
+  if(!text){ box.innerHTML = ''; return; }
+  const list = db.customers.filter(c=>`${c.code||c.id||''} ${c.name||''} ${c.phone||''}`.toLowerCase().includes(text)).slice(0,5);
+  box.innerHTML = list.map(c=>`
+    <button onclick="selectMemberForCart('${c.id}')" class="w-full text-left p-2 rounded-xl bg-gray-50 hover:bg-primary-soft text-sm">
+      <b>${c.code || c.id}</b> ${c.name} <span class="text-gray-500">${c.phone || ''}</span> <span class="float-right">${c.points || 0} แต้ม</span>
+    </button>`).join('') || '<p class="text-xs text-gray-400 px-2">ไม่พบสมาชิก</p>';
+}
+function renderSelectedMemberBox(){
+  const box = document.getElementById('selected-member-box');
+  if(!box) return;
+  const c = db.customers?.find(x=>x.id===selectedCustomerId);
+  if(!c){ box.classList.add('hidden'); box.innerHTML=''; return; }
+  box.classList.remove('hidden');
+  box.innerHTML = `<div class="flex justify-between gap-2"><div><b>${c.code || c.id}</b> ${c.name}<br><span class="text-gray-600">${c.phone || '-'} | ${c.points || 0} แต้ม</span></div><button onclick="clearSelectedMember()" class="text-red-600 font-bold">ล้าง</button></div>`;
+}
+function clearSelectedMember(){
+  selectedCustomerId = '';
+  const inp = document.getElementById('member-search'); if(inp) inp.value='';
+  renderMemberSelect();
 }
 function selectMemberForCart(id){
   selectedCustomerId = id || '';
   const c = db.customers?.find(x=>x.id===selectedCustomerId);
+  const inp = document.getElementById('member-search');
+  if(inp && c) inp.value = `${c.code || c.id} ${c.name} ${c.phone || ''}`;
+  const res = document.getElementById('member-search-results'); if(res) res.innerHTML='';
+  renderSelectedMemberBox();
   if(c && Number(c.discount)>0){
     document.getElementById('discount-form')?.classList.remove('hidden');
     const dv = document.getElementById('discount-value');
@@ -2393,6 +2575,7 @@ function openMemberModal(id=''){
   const c = isEdit ? db.customers.find(x=>x.id===id) : null;
   document.getElementById('member-modal-title').textContent = isEdit ? 'แก้ไขสมาชิก' : 'เพิ่มสมาชิก';
   document.getElementById('member-original-id').value = c?.id || '';
+  document.getElementById('member-code').value = c?.code || c?.id || (isEdit?'':makeMemberCode());
   document.getElementById('member-name').value = c?.name || '';
   document.getElementById('member-phone').value = c?.phone || '';
   document.getElementById('member-note').value = c?.note || '';
@@ -2410,18 +2593,22 @@ function saveMemberModal(e){
   e.preventDefault();
   ensureCustomers();
   const originalId = document.getElementById('member-original-id').value;
+  const code = document.getElementById('member-code').value.trim() || makeMemberCode();
   const name = document.getElementById('member-name').value.trim();
   const phone = document.getElementById('member-phone').value.trim();
   if(!name) return showToast('กรอกชื่อลูกค้า');
+  if(db.customers.some(c=>c.id!==originalId && String(c.code||'').toLowerCase()===code.toLowerCase())) return showToast('รหัสสมาชิกซ้ำ');
+  const old = db.customers.find(c=>c.id===originalId);
   const member = {
-    id: originalId || ('C' + Date.now()),
+    id: originalId || code,
+    code,
     name,
     phone,
     note: document.getElementById('member-note').value.trim(),
     points: Number(document.getElementById('member-points').value)||0,
     discount: Number(document.getElementById('member-discount').value)||0,
-    totalSpend: originalId ? (db.customers.find(c=>c.id===originalId)?.totalSpend || 0) : 0,
-    lastPurchaseAt: originalId ? (db.customers.find(c=>c.id===originalId)?.lastPurchaseAt || '') : ''
+    totalSpend: old?.totalSpend || 0,
+    lastPurchaseAt: old?.lastPurchaseAt || ''
   };
   const idx = db.customers.findIndex(c=>c.id===originalId);
   if(idx>=0) db.customers[idx]=member;
@@ -2447,21 +2634,21 @@ function deleteMemberFromModal(){
 function renderMembersPage(){
   ensureCustomers();
   const q = (localStorage.getItem(KEY+'_member_search') || '').toLowerCase();
-  const list = db.customers.filter(c=>!q || `${c.name} ${c.phone} ${c.note}`.toLowerCase().includes(q));
+  const list = db.customers.filter(c=>!q || `${c.code||c.id} ${c.name} ${c.phone} ${c.note}`.toLowerCase().includes(q));
   const page = document.getElementById('page-members');
   if(!page) return;
-  page.innerHTML = pageTitle('สมาชิก','') + `
+  page.innerHTML = pageTitle('สมาชิก','ซื้อครบ 100 บาท ได้ 1 แต้ม') + `
     <div class="bg-white rounded-3xl card-shadow p-4 mb-4 flex flex-col md:flex-row gap-2">
-      <input value="${q}" oninput="localStorage.setItem(KEY+'_member_search',this.value);renderMembersPage()" placeholder="ค้นหาชื่อ/เบอร์โทร" class="flex-1 p-4 soft-border rounded-2xl">
+      <input value="${q}" oninput="localStorage.setItem(KEY+'_member_search',this.value);renderMembersPage()" placeholder="ค้นหารหัส / ชื่อ / เบอร์โทร" class="flex-1 p-4 soft-border rounded-2xl">
       <button onclick="openMemberModal()" class="px-5 bg-primary text-white rounded-2xl font-bold">เพิ่มสมาชิก</button>
     </div>
     <div class="bg-white rounded-3xl card-shadow overflow-hidden">
       <table class="responsive-table w-full text-left">
-        <thead class="bg-gray-50 text-gray-500"><tr><th class="p-4">ชื่อ</th><th>เบอร์</th><th>แต้ม</th><th>ยอดซื้อรวม</th><th class="p-4 text-right">จัดการ</th></tr></thead>
+        <thead class="bg-gray-50 text-gray-500"><tr><th class="p-4">รหัส/ชื่อ</th><th>เบอร์</th><th>แต้ม</th><th>ยอดซื้อรวม</th><th class="p-4 text-right">จัดการ</th></tr></thead>
         <tbody>
           ${list.map(c=>`
             <tr class="border-t">
-              <td class="p-4 font-bold">${c.name}<br><span class="text-sm text-gray-400">${c.note || ''}</span></td>
+              <td class="p-4 font-bold"><span class="text-primary">${c.code || c.id}</span> ${c.name}<br><span class="text-sm text-gray-400">${c.note || ''}</span></td>
               <td>${c.phone || '-'}</td>
               <td>${c.points || 0}</td>
               <td>${money(c.totalSpend || 0)}</td>
@@ -2486,6 +2673,10 @@ function renderReportsPage(){
   const cost = bills.reduce((s,b)=>s + (b.items||[]).reduce((x,i)=>x+((Number(i.cost)||0)*(Number(i.qty)||0)),0),0);
   const profit = sales - cost;
   const qty = bills.reduce((s,b)=>s + (b.items||[]).reduce((x,i)=>x+(Number(i.qty)||0),0),0);
+  const cashTotal = bills.reduce((s,b)=>s+(Number(b.cashPart)|| (b.paymentMethod==='cash'?Number(b.netTotal)||0:0)),0);
+  const transferTotal = bills.reduce((s,b)=>s+(Number(b.transferPart)|| (b.paymentMethod==='transfer'?Number(b.netTotal)||0:0)),0);
+  const projectTotal = bills.reduce((s,b)=>s+(Number(b.projectPart)||0),0);
+  const otherTotal = bills.reduce((s,b)=>s+(b.paymentMethod==='other'?Number(b.netTotal)||0:0),0);
   const returnsTotal = (db.returns||[]).filter(r=>{
     const d = new Date(r.createdAt);
     return d >= start && d <= end;
@@ -2498,17 +2689,21 @@ function renderReportsPage(){
   }));
   const bestList = Object.entries(best).sort((a,b)=>b[1]-a[1]).slice(0,8);
 
-  document.getElementById('page-reports').innerHTML = pageTitle('รายงาน','') + `
+  document.getElementById('page-reports').innerHTML = pageTitle('รายงาน','แยกยอดขายตามช่องทางชำระเงิน') + `
     <div class="bg-white rounded-3xl card-shadow p-3 mb-5 flex flex-wrap gap-2">
-      ${Object.entries(labels).map(([k,v])=>`
-        <button onclick="setReportPeriod('${k}')" class="px-4 py-3 rounded-2xl font-bold ${period===k?'bg-primary text-white':'bg-gray-100 text-gray-600'}">${v}</button>
-      `).join('')}
+      ${Object.entries(labels).map(([k,v])=>`<button onclick="setReportPeriod('${k}')" class="px-4 py-3 rounded-2xl font-bold ${period===k?'bg-primary text-white':'bg-gray-100 text-gray-600'}">${v}</button>`).join('')}
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
       <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">ยอดขาย</p><h3 class="text-3xl font-bold text-primary">${money(sales)}</h3></div>
       <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">ต้นทุน</p><h3 class="text-3xl font-bold">${money(cost)}</h3></div>
       <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">กำไร</p><h3 class="text-3xl font-bold">${money(profit)}</h3></div>
       <div class="bg-white p-6 rounded-3xl card-shadow"><p class="text-gray-500">บิล / ชิ้น</p><h3 class="text-3xl font-bold">${bills.length} บิล</h3><p class="text-gray-500">${qty} ชิ้น</p></div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
+      <div class="bg-white p-5 rounded-3xl card-shadow"><p class="text-gray-500">เงินสด</p><h3 class="text-2xl font-bold">${money(cashTotal)}</h3></div>
+      <div class="bg-white p-5 rounded-3xl card-shadow"><p class="text-gray-500">โอน</p><h3 class="text-2xl font-bold">${money(transferTotal)}</h3></div>
+      <div class="bg-white p-5 rounded-3xl card-shadow"><p class="text-gray-500">โครงการ</p><h3 class="text-2xl font-bold text-primary">${money(projectTotal)}</h3></div>
+      <div class="bg-white p-5 rounded-3xl card-shadow"><p class="text-gray-500">อื่น ๆ</p><h3 class="text-2xl font-bold">${money(otherTotal)}</h3></div>
     </div>
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
       <div class="bg-white p-6 rounded-3xl card-shadow">
@@ -2528,7 +2723,8 @@ function renderReportsPage(){
         <tbody>
           ${bills.slice().reverse().map(b=>{
             const billCost = (b.items||[]).reduce((s,i)=>s+((Number(i.cost)||0)*(Number(i.qty)||0)),0);
-            return `<tr class="border-t border-gray-100"><td class="p-4 font-semibold">${b.billNo}</td><td>${new Date(b.createdAt).toLocaleString('th-TH')}</td><td>${b.paymentText}</td><td class="font-bold text-primary">${money(b.netTotal)}</td><td class="font-bold">${money((Number(b.netTotal)||0)-billCost)}</td></tr>`;
+            const pay = b.paymentMethod==='project' ? `โครงการ ${money(b.projectPart||0)} + ${(b.projectDiffMethod==='transfer'?'โอน':'เงินสด')} ${money(b.projectDiff||0)}` : b.paymentText;
+            return `<tr class="border-t border-gray-100"><td class="p-4 font-semibold">${b.billNo}</td><td>${new Date(b.createdAt).toLocaleString('th-TH')}</td><td>${pay}</td><td class="font-bold text-primary">${money(b.netTotal)}</td><td class="font-bold">${money((Number(b.netTotal)||0)-billCost)}</td></tr>`;
           }).join('') || '<tr><td colspan="5" class="p-8 text-center text-gray-400">ยังไม่มีบิล</td></tr>'}
         </tbody>
       </table>
