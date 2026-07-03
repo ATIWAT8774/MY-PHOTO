@@ -63,6 +63,50 @@ async function autoSyncBillToSheets(bill){
   }
 }
 
+
+function resetData(){
+  if(!confirm('ล้างข้อมูลในเครื่องทั้งหมดหรือไม่')) return;
+  db = {
+    settings: {
+      storeName:'งามตา SHOP',
+      cashier:'แอดมิน',
+      receiptFooter:'ขอบคุณที่ใช้บริการ',
+      sheetApiUrl: db.settings?.sheetApiUrl || ''
+    },
+    products: [],
+    bills: [],
+    returns: [],
+    heldBills: []
+  };
+  saveDB();
+  renderCategories();
+  renderProducts();
+  renderCart();
+  renderAllPages();
+  showToast('ล้างข้อมูลในเครื่องแล้ว');
+}
+
+
+async function clearSheetsData(){
+  try{
+    if(!confirm('ล้างข้อมูลทั้งหมดใน Google Sheets หรือไม่? การกระทำนี้ย้อนกลับไม่ได้')) return;
+    await callSheetApi('clearAll', {});
+    db.products = [];
+    db.bills = [];
+    db.returns = [];
+    db.heldBills = [];
+    saveDB();
+    renderCategories();
+    renderProducts();
+    renderCart();
+    renderAllPages();
+    showToast('ล้างข้อมูล Google Sheets แล้ว');
+  }catch(err){
+    console.error(err);
+    showToast('ล้างข้อมูลชีตไม่สำเร็จ');
+  }
+}
+
 </script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -811,25 +855,17 @@ async function autoSyncBillToSheets(bill){
   <div id="print-area"></div>
 
 <script>
-const KEY = 'ngamta_shop_pos_v2';
+const KEY = 'ngamta_shop_pos_sheet_primary_v1';
 
 const defaultData = {
   settings: { storeName:'งามตา SHOP', cashier:'แอดมิน', receiptFooter:'ขอบคุณที่ใช้บริการ', sheetApiUrl:'' },
-  products: [
-    { id:'TSH-BASIC-BLK-S', barcode:'240001000101', name:'เสื้อยืด Basic', type:'เสื้อ', size:'S', color:'ดำ', price:199, cost:120, stock:10, cat:'เสื้อยืด', img:'https://images.pexels.com/photos/8532616/pexels-photo-8532616.jpeg?auto=compress&cs=tinysrgb&w=400' },
-    { id:'TSH-BASIC-BLK-M', barcode:'240001000102', name:'เสื้อยืด Basic', type:'เสื้อ', size:'M', color:'ดำ', price:199, cost:120, stock:8, cat:'เสื้อยืด', img:'https://images.pexels.com/photos/8532616/pexels-photo-8532616.jpeg?auto=compress&cs=tinysrgb&w=400' },
-    { id:'TSH-BASIC-WHT-M', barcode:'240001000103', name:'เสื้อยืด Basic', type:'เสื้อ', size:'M', color:'ขาว', price:199, cost:120, stock:12, cat:'เสื้อยืด', img:'https://images.pexels.com/photos/8532616/pexels-photo-8532616.jpeg?auto=compress&cs=tinysrgb&w=400' },
-    { id:'SHIRT-LINEN-BGE-F', barcode:'240001000104', name:'เสื้อเชิ้ตลินิน', type:'เสื้อ', size:'Free Size', color:'เบจ', price:390, cost:230, stock:6, cat:'เสื้อเชิ้ต', img:'https://images.pexels.com/photos/769732/pexels-photo-769732.jpeg?auto=compress&cs=tinysrgb&w=400' },
-    { id:'JEANS-BLUE-M', barcode:'240001000105', name:'กางเกงยีนส์ทรงตรง', type:'กางเกง', size:'M', color:'น้ำเงิน', price:590, cost:360, stock:5, cat:'ยีนส์', img:'https://images.pexels.com/photos/1598507/pexels-photo-1598507.jpeg?auto=compress&cs=tinysrgb&w=400' },
-    { id:'JEANS-BLUE-L', barcode:'240001000106', name:'กางเกงยีนส์ทรงตรง', type:'กางเกง', size:'L', color:'น้ำเงิน', price:590, cost:360, stock:4, cat:'ยีนส์', img:'https://images.pexels.com/photos/1598507/pexels-photo-1598507.jpeg?auto=compress&cs=tinysrgb&w=400' },
-    { id:'DRESS-FLOWER-F', barcode:'240001000107', name:'เดรสลายดอก', type:'เดรส', size:'Free Size', color:'ครีม', price:490, cost:290, stock:7, cat:'เดรส', img:'https://images.pexels.com/photos/1488463/pexels-photo-1488463.jpeg?auto=compress&cs=tinysrgb&w=400' },
-    { id:'SKIRT-BLK-M', barcode:'240001000108', name:'กระโปรงพลีท', type:'กระโปรง', size:'M', color:'ดำ', price:350, cost:210, stock:9, cat:'กระโปรง', img:'https://images.pexels.com/photos/6311392/pexels-photo-6311392.jpeg?auto=compress&cs=tinysrgb&w=400' }
-  ],
+  products: [],
   bills: [],
   returns: [],
   heldBills: []
 };
 
+clearOldLocalPOSDataOnce();
 let db = loadDB();
 let cart = [];
 let discountType = 'percent';
@@ -838,6 +874,18 @@ let selectedCat = 'ทั้งหมด';
 let lastBill = null;
 let html5QrCode = null;
 let scannerRunning = false;
+
+
+function clearOldLocalPOSDataOnce(){
+  const marker = 'ngamta_shop_pos_sheet_primary_cleared_once';
+  if(localStorage.getItem(marker)) return;
+  Object.keys(localStorage).forEach(k=>{
+    if(k.includes('ngamta_shop_pos') || k.includes('modern_green_pos') || k.includes('MiniMart') || k.includes('minimart')){
+      localStorage.removeItem(k);
+    }
+  });
+  localStorage.setItem(marker, '1');
+}
 
 function loadDB(){
   const raw = localStorage.getItem(KEY);
@@ -2249,8 +2297,9 @@ function renderSettingsPage(){
         <button class="btn-touch px-6 bg-primary text-white rounded-2xl font-bold">บันทึกตั้งค่า</button>
         <button type="button" onclick="syncToSheets()" class="btn-touch px-6 bg-gray-900 text-white rounded-2xl font-bold">ส่งข้อมูลไปชีต</button>
         <button type="button" onclick="syncFromSheets()" class="btn-touch px-6 bg-gray-100 rounded-2xl font-bold">ดึงข้อมูลจากชีต</button>
+        <button type="button" onclick="clearSheetsData()" class="btn-touch px-6 bg-red-50 text-red-600 rounded-2xl font-bold">ล้างข้อมูลชีต</button>
       </div>
-      <p class="text-sm text-gray-500">ถ้าไม่ใส่ URL ระบบยังทำงานแบบ localStorage ได้ปกติ</p>
+      <p class="text-sm text-gray-500">ตั้งค่า URL แล้วใช้ Google Sheets เป็นฐานข้อมูลหลัก</p>
     </form>`;
 }
 
