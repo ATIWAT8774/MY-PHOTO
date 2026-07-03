@@ -512,7 +512,7 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
 
       <div class="p-4 border-t border-gray-100">
         <button onclick="resetDemoData()" class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-red-600 bg-red-50 hover:bg-red-100 font-medium">
-          <i data-lucide="rotate-ccw" class="w-5 h-5"></i><span class="sidebar-text">รีเซ็ตข้อมูล</span>
+          <i data-lucide="rotate-ccw" class="w-5 h-5"></i><span class="sidebar-text">โหลดข้อมูลจากชีต</span>
         </button>
       </div>
     </aside>
@@ -1016,7 +1016,8 @@ function loadDB(){
 
 let sheetSaveTimer = null;
 function saveDB(autoSync=true){
-  if(autoSync) queueSheetSave();
+  // กันไม่ให้หน้าเว็บส่งข้อมูลว่าง/ค่าเริ่มต้นไปทับชีต ระหว่างที่ยังโหลดจากชีตไม่เสร็จ
+  if(autoSync && window.__sheetReady === true) queueSheetSave();
 }
 function queueSheetSave(){
   if(!db?.settings?.sheetApiUrl) return;
@@ -1061,20 +1062,24 @@ function showToast(msg){
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function getTodayBills(){ return db.bills.filter(b => (b.createdAt||'').slice(0,10) === todayStr() && !b.voided); }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   try{
     safeCreateIcons();
     initEvents();
     updateClock(); setInterval(updateClock,1000);
+    closeMobileCart();
+    closeDrawer();
+    document.querySelectorAll('.bottom-btn').forEach(b=>b.classList.toggle('active', b.dataset.page==='sales'));
+
+    // โหลดฐานข้อมูลจาก Google Sheets ก่อน render หน้า เพื่อไม่ให้รีเฟรชแล้วขึ้นว่าง
+    await initialSyncFromSheets();
+
     applySettings();
     renderCategories();
     renderProducts();
     renderCart();
-    closeMobileCart();
-    closeDrawer();
-    document.querySelectorAll('.bottom-btn').forEach(b=>b.classList.toggle('active', b.dataset.page==='sales'));
     renderAllPages();
-    setTimeout(initialSyncFromSheets, 300);
+    updateTodaySales();
   }catch(err){
     console.error('INIT ERROR', err);
     const t = document.getElementById('toast');
@@ -2893,6 +2898,7 @@ function normalizeBillForSheetV2(b){
 }
 
 
+window.__sheetReady = false;
 let initialSheetSyncDone = false;
 async function initialSyncFromSheets(){
   if(initialSheetSyncDone) return;
@@ -2913,6 +2919,7 @@ async function initialSyncFromSheets(){
       renderCart();
       renderAllPages();
       updateTodaySales();
+      window.__sheetReady = true;
       showToast('เชื่อม Google Sheets แล้ว');
     }
   }catch(err){
@@ -2965,6 +2972,7 @@ async function syncFromSheets(){
       renderProducts();
       renderCart();
       renderAllPages();
+      window.__sheetReady = true;
       showToast('ดึงข้อมูลจาก Google Sheets แล้ว');
     }
   }catch(err){
@@ -2991,6 +2999,7 @@ async function forceReloadFromSheets(){
       renderCart();
       renderAllPages();
       updateTodaySales();
+      window.__sheetReady = true;
       showToast('โหลดข้อมูลจาก Google Sheets แล้ว');
     }
   }catch(err){
@@ -3008,27 +3017,9 @@ async function autoSyncBillToSheets(bill){
 }
 
 
-function resetData(){
-  if(!confirm('ล้างข้อมูลในเครื่องทั้งหมดหรือไม่')) return;
-  db = {
-    settings: {
-      storeName:'งามตา SHOP',
-      cashier:'แอดมิน',
-      receiptFooter:'ขอบคุณที่ใช้บริการ',
-      sheetApiUrl: SHEET_API_URL
-    },
-    products: [],
-    bills: [],
-    returns: [],
-    customers: [],
-    heldBills: []
-  };
-  saveDB();
-  renderCategories();
-  renderProducts();
-  renderCart();
-  renderAllPages();
-  showToast('ล้างข้อมูลในเครื่องแล้ว');
+async function resetData(){
+  // รุ่นใช้ Google Sheets เป็นฐานข้อมูลหลัก: รีเซ็ต = โหลดข้อมูลจากชีตใหม่เท่านั้น ไม่ล้างข้อมูล
+  await forceReloadFromSheets();
 }
 
 
