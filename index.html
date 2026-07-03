@@ -905,14 +905,13 @@ const defaultData = {
   bills: [],
   returns: [],
   customers: [],
-  heldBills: [],
-    customers: []
+  heldBills: []
 };
 
 clearOldLocalPOSDataOnce();
 let db = loadDB();
 let cart = [];
-                selectedCustomerId = '';
+let selectedCustomerId = '';
 let discountType = 'percent';
 let paymentMethod = 'cash';
 let selectedCat = 'ทั้งหมด';
@@ -981,17 +980,23 @@ function todayStr(){ return new Date().toISOString().slice(0,10); }
 function getTodayBills(){ return db.bills.filter(b => (b.createdAt||'').slice(0,10) === todayStr() && !b.voided); }
 
 document.addEventListener('DOMContentLoaded', () => {
-  safeCreateIcons();
-  initEvents();
-  updateClock(); setInterval(updateClock,1000);
-  applySettings();
-  renderCategories();
-  renderProducts();
-  renderCart();
-  closeMobileCart();
-  closeDrawer();
-  document.querySelectorAll('.bottom-btn').forEach(b=>b.classList.toggle('active', b.dataset.page===page));
-  renderAllPages();
+  try{
+    safeCreateIcons();
+    initEvents();
+    updateClock(); setInterval(updateClock,1000);
+    applySettings();
+    renderCategories();
+    renderProducts();
+    renderCart();
+    closeMobileCart();
+    closeDrawer();
+    document.querySelectorAll('.bottom-btn').forEach(b=>b.classList.toggle('active', b.dataset.page==='sales'));
+    renderAllPages();
+  }catch(err){
+    console.error('INIT ERROR', err);
+    const t = document.getElementById('toast');
+    if(t){ t.textContent = 'ระบบโหลดผิดพลาด: ' + err.message; t.classList.remove('hidden'); }
+  }
 });
 
 function updateClock(){
@@ -1571,7 +1576,6 @@ function renderSingleBarcodePreview(code){
 }
 let currentBarcodeProduct = null;
 let receiveItems = [];
-let selectedCustomerId = '';
 let pendingNewBarcode = '';
 let scannerMode = 'sale';
 let receiveModalWasOpen = false;
@@ -2644,9 +2648,8 @@ function resetData(){
     products: [],
     bills: [],
     returns: [],
-  customers: [],
-    heldBills: [],
-    customers: []
+    customers: [],
+    heldBills: []
   };
   saveDB();
   renderCategories();
