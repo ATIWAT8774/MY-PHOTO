@@ -396,10 +396,10 @@
 </style>
 
 <script>
-window.safeCreateIcons = window.safeCreateIcons || function(){
+window.safeCreateIcons = function(){
   try{
     if(window.lucide && typeof window.lucide.createIcons === 'function'){
-      window.safeCreateIcons();
+      window.lucide.createIcons();
     }
   }catch(e){
     console.warn('icons skipped', e);
