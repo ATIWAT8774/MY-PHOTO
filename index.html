@@ -974,9 +974,10 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
 
 <script>
 const KEY = 'ngamta_shop_pos_sheet_primary_v1';
+const SHEET_API_URL = '${SHEET_API_URL}';
 
 const defaultData = {
-  settings: { storeName:'งามตา SHOP', cashier:'แอดมิน', receiptFooter:'ขอบคุณที่ใช้บริการ', sheetApiUrl:'https://script.google.com/macros/s/AKfycbw0zAIkaMoUe9LKH-x8LTEDP2B24bzgxJVqMOgvvbV3Y8GLkuMaTb76XeRUF_qNRzSo2A/exec' },
+  settings: { storeName:'งามตา SHOP', cashier:'แอดมิน', receiptFooter:'ขอบคุณที่ใช้บริการ', sheetApiUrl:SHEET_API_URL },
   products: [],
   bills: [],
   returns: [],
@@ -986,6 +987,9 @@ const defaultData = {
 
 clearOldLocalPOSDataOnce();
 let db = loadDB();
+if(!db.settings) db.settings = {};
+db.settings.sheetApiUrl = SHEET_API_URL;
+saveDB();
 let cart = [];
 let selectedCustomerId = '';
 let discountType = 'percent';
@@ -1068,6 +1072,7 @@ document.addEventListener('DOMContentLoaded', () => {
     closeDrawer();
     document.querySelectorAll('.bottom-btn').forEach(b=>b.classList.toggle('active', b.dataset.page==='sales'));
     renderAllPages();
+    setTimeout(initialSyncFromSheets, 300);
   }catch(err){
     console.error('INIT ERROR', err);
     const t = document.getElementById('toast');
@@ -2782,7 +2787,7 @@ function renderSettingsPage(){
       <label class="font-semibold">ข้อความท้ายบิล</label>
       <input id="set-footer" value="${db.settings.receiptFooter || db.settings.footer || 'ขอบคุณที่ใช้บริการ'}" class="w-full p-4 soft-border rounded-2xl">
       <label class="font-semibold">Google Apps Script Web App URL</label>
-      <input id="set-sheet-api" value="${db.settings.sheetApiUrl || 'https://script.google.com/macros/s/AKfycbw0zAIkaMoUe9LKH-x8LTEDP2B24bzgxJVqMOgvvbV3Y8GLkuMaTb76XeRUF_qNRzSo2A/exec'}" placeholder="วาง URL ที่ลงท้าย /exec" class="w-full p-4 soft-border rounded-2xl">
+      <input id="set-sheet-api" value="${db.settings.sheetApiUrl || SHEET_API_URL}" placeholder="วาง URL ที่ลงท้าย /exec" class="w-full p-4 soft-border rounded-2xl">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2 pt-2">
         <button class="btn-touch px-6 bg-primary text-white rounded-2xl font-bold">บันทึกตั้งค่า</button>
         <button type="button" onclick="setupSheetsV2()" class="btn-touch px-6 bg-primary-soft text-primary rounded-2xl font-bold">สร้าง/ตรวจชีต</button>
@@ -2799,7 +2804,7 @@ function saveSettings(e){
   db.settings.storeName = document.getElementById('set-store').value.trim() || 'งามตา SHOP';
   db.settings.cashier = document.getElementById('set-cashier').value.trim() || 'แอดมิน';
   db.settings.receiptFooter = document.getElementById('set-footer').value.trim() || 'ขอบคุณที่ใช้บริการ';
-  db.settings.sheetApiUrl = document.getElementById('set-sheet-api')?.value.trim() || 'https://script.google.com/macros/s/AKfycbw0zAIkaMoUe9LKH-x8LTEDP2B24bzgxJVqMOgvvbV3Y8GLkuMaTb76XeRUF_qNRzSo2A/exec';
+  db.settings.sheetApiUrl = document.getElementById('set-sheet-api')?.value.trim() || SHEET_API_URL;
   saveDB(); applySettings(); renderAllPages(); showToast('บันทึกการตั้งค่าแล้ว');
 }
 function resetDemoData(){
@@ -2886,8 +2891,37 @@ function normalizeBillForSheetV2(b){
   };
 }
 
+
+let initialSheetSyncDone = false;
+async function initialSyncFromSheets(){
+  if(initialSheetSyncDone) return;
+  initialSheetSyncDone = true;
+  try{
+    const data = await callSheetApi('getAll', {});
+    if(data && data.data){
+      db.products = data.data.products || db.products || [];
+      db.bills = data.data.bills || data.data.sales || db.bills || [];
+      db.returns = data.data.returns || db.returns || [];
+      db.customers = data.data.customers || data.data.members || db.customers || [];
+      db.settings = {...db.settings, ...(data.data.settings || {})};
+      db.settings.sheetApiUrl = SHEET_API_URL;
+      saveDB();
+      applySettings();
+      renderCategories();
+      renderProducts();
+      renderCart();
+      renderAllPages();
+      updateTodaySales();
+      showToast('เชื่อม Google Sheets แล้ว');
+    }
+  }catch(err){
+    console.error('Initial sheet sync failed', err);
+    showToast('ยังเชื่อม Google Sheets ไม่สำเร็จ');
+  }
+}
+
 async function callSheetApi(action, payload={}){
-  const url = db.settings.sheetApiUrl || 'https://script.google.com/macros/s/AKfycbw0zAIkaMoUe9LKH-x8LTEDP2B24bzgxJVqMOgvvbV3Y8GLkuMaTb76XeRUF_qNRzSo2A/exec';
+  const url = (db.settings && db.settings.sheetApiUrl) || SHEET_API_URL;
   if(!url){
     showToast('ยังไม่ได้ตั้งค่า Google Apps Script URL');
     throw new Error('Missing Apps Script URL');
@@ -2924,7 +2958,7 @@ async function syncFromSheets(){
       db.heldBills = data.data.heldBills || db.heldBills || [];
       db.customers = data.data.customers || data.data.members || db.customers || [];
       db.settings = {...db.settings, ...(data.data.settings || {})};
-      db.settings.sheetApiUrl = db.settings.sheetApiUrl || 'https://script.google.com/macros/s/AKfycbw0zAIkaMoUe9LKH-x8LTEDP2B24bzgxJVqMOgvvbV3Y8GLkuMaTb76XeRUF_qNRzSo2A/exec';
+      db.settings.sheetApiUrl = SHEET_API_URL;
       saveDB();
       renderCategories();
       renderProducts();
@@ -2954,7 +2988,7 @@ function resetData(){
       storeName:'งามตา SHOP',
       cashier:'แอดมิน',
       receiptFooter:'ขอบคุณที่ใช้บริการ',
-      sheetApiUrl: db.settings?.sheetApiUrl || ''
+      sheetApiUrl: SHEET_API_URL
     },
     products: [],
     bills: [],
