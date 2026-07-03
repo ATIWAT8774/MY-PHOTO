@@ -393,6 +393,25 @@
     #reader video{width:100%!important;border-radius:16px}
     #reader{min-height:260px;background:#f3f4f6}
 
+
+    i[data-lucide]{
+      display:inline-flex;
+      width:20px;
+      height:20px;
+      min-width:20px;
+      align-items:center;
+      justify-content:center;
+    }
+    i[data-lucide]:empty::before{
+      content:"";
+      display:block;
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      background:currentColor;
+      opacity:.45;
+    }
+
 </style>
 
 <script>
