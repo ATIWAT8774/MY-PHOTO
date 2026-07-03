@@ -4,113 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>งามตา SHOP - ระบบขายหน้าร้าน</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17">
-async function callSheetApi(action, payload={}){
-  const url = db.settings.sheetApiUrl || '';
-  if(!url){
-    showToast('ยังไม่ได้ตั้งค่า Google Apps Script URL');
-    throw new Error('Missing Apps Script URL');
-  }
-  const res = await fetch(url, {
-    method:'POST',
-    mode:'cors',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({action, payload})
-  });
-  const data = await res.json();
-  if(!data.ok) throw new Error(data.error || 'Google Sheet error');
-  return data;
-}
-async function syncToSheets(){
-  try{
-    showToast('กำลังส่งข้อมูลไป Google Sheets...');
-    await callSheetApi('saveAll', db);
-    showToast('ส่งข้อมูลไป Google Sheets แล้ว');
-  }catch(err){
-    console.error(err);
-    showToast('ส่งข้อมูลไม่สำเร็จ');
-  }
-}
-async function syncFromSheets(){
-  try{
-    if(!confirm('ดึงข้อมูลจาก Google Sheets มาแทนข้อมูลในเครื่องหรือไม่')) return;
-    showToast('กำลังดึงข้อมูลจาก Google Sheets...');
-    const data = await callSheetApi('getAll', {});
-    if(data.data){
-      db.products = data.data.products || db.products;
-      db.bills = data.data.bills || db.bills;
-      db.returns = data.data.returns || db.returns;
-      db.heldBills = data.data.heldBills || db.heldBills || [];
-      db.settings = {...db.settings, ...(data.data.settings || {})};
-      db.customers = data.data.customers || db.customers || [];
-      saveDB();
-      renderCategories();
-      renderProducts();
-      renderCart();
-      renderAllPages();
-      showToast('ดึงข้อมูลจาก Google Sheets แล้ว');
-    }
-  }catch(err){
-    console.error(err);
-    showToast('ดึงข้อมูลไม่สำเร็จ');
-  }
-}
-async function autoSyncBillToSheets(bill){
-  if(!db.settings.sheetApiUrl) return;
-  try{
-    await callSheetApi('appendBill', {bill});
-  }catch(err){
-    console.warn('Auto sync bill failed', err);
-  }
-}
-
-
-function resetData(){
-  if(!confirm('ล้างข้อมูลในเครื่องทั้งหมดหรือไม่')) return;
-  db = {
-    settings: {
-      storeName:'งามตา SHOP',
-      cashier:'แอดมิน',
-      receiptFooter:'ขอบคุณที่ใช้บริการ',
-      sheetApiUrl: db.settings?.sheetApiUrl || ''
-    },
-    products: [],
-    bills: [],
-    returns: [],
-  customers: [],
-    heldBills: [],
-    customers: []
-  };
-  saveDB();
-  renderCategories();
-  renderProducts();
-  renderCart();
-  renderAllPages();
-  showToast('ล้างข้อมูลในเครื่องแล้ว');
-}
-
-
-async function clearSheetsData(){
-  try{
-    if(!confirm('ล้างข้อมูลทั้งหมดใน Google Sheets หรือไม่? การกระทำนี้ย้อนกลับไม่ได้')) return;
-    await callSheetApi('clearAll', {});
-    db.products = [];
-    db.bills = [];
-    db.returns = [];
-    db.heldBills = [];
-    saveDB();
-    renderCategories();
-    renderProducts();
-    renderCart();
-    renderAllPages();
-    showToast('ล้างข้อมูล Google Sheets แล้ว');
-  }catch(err){
-    console.error(err);
-    showToast('ล้างข้อมูลชีตไม่สำเร็จ');
-  }
-}
-
-</script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -2656,6 +2550,112 @@ function resetDemoData(){
   localStorage.setItem(KEY, JSON.stringify(defaultData));
   db = loadDB(); cart=[]; selectedCat='ทั้งหมด';
   applySettings(); renderCategories(); renderProducts(); renderCart(); renderAllPages(); updateTodaySales();
+}
+</script>
+<script>
+async function callSheetApi(action, payload={}){
+  const url = db.settings.sheetApiUrl || '';
+  if(!url){
+    showToast('ยังไม่ได้ตั้งค่า Google Apps Script URL');
+    throw new Error('Missing Apps Script URL');
+  }
+  const res = await fetch(url, {
+    method:'POST',
+    mode:'cors',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({action, payload})
+  });
+  const data = await res.json();
+  if(!data.ok) throw new Error(data.error || 'Google Sheet error');
+  return data;
+}
+async function syncToSheets(){
+  try{
+    showToast('กำลังส่งข้อมูลไป Google Sheets...');
+    await callSheetApi('saveAll', db);
+    showToast('ส่งข้อมูลไป Google Sheets แล้ว');
+  }catch(err){
+    console.error(err);
+    showToast('ส่งข้อมูลไม่สำเร็จ');
+  }
+}
+async function syncFromSheets(){
+  try{
+    if(!confirm('ดึงข้อมูลจาก Google Sheets มาแทนข้อมูลในเครื่องหรือไม่')) return;
+    showToast('กำลังดึงข้อมูลจาก Google Sheets...');
+    const data = await callSheetApi('getAll', {});
+    if(data.data){
+      db.products = data.data.products || db.products;
+      db.bills = data.data.bills || db.bills;
+      db.returns = data.data.returns || db.returns;
+      db.heldBills = data.data.heldBills || db.heldBills || [];
+      db.settings = {...db.settings, ...(data.data.settings || {})};
+      db.customers = data.data.customers || db.customers || [];
+      saveDB();
+      renderCategories();
+      renderProducts();
+      renderCart();
+      renderAllPages();
+      showToast('ดึงข้อมูลจาก Google Sheets แล้ว');
+    }
+  }catch(err){
+    console.error(err);
+    showToast('ดึงข้อมูลไม่สำเร็จ');
+  }
+}
+async function autoSyncBillToSheets(bill){
+  if(!db.settings.sheetApiUrl) return;
+  try{
+    await callSheetApi('appendBill', {bill});
+  }catch(err){
+    console.warn('Auto sync bill failed', err);
+  }
+}
+
+
+function resetData(){
+  if(!confirm('ล้างข้อมูลในเครื่องทั้งหมดหรือไม่')) return;
+  db = {
+    settings: {
+      storeName:'งามตา SHOP',
+      cashier:'แอดมิน',
+      receiptFooter:'ขอบคุณที่ใช้บริการ',
+      sheetApiUrl: db.settings?.sheetApiUrl || ''
+    },
+    products: [],
+    bills: [],
+    returns: [],
+  customers: [],
+    heldBills: [],
+    customers: []
+  };
+  saveDB();
+  renderCategories();
+  renderProducts();
+  renderCart();
+  renderAllPages();
+  showToast('ล้างข้อมูลในเครื่องแล้ว');
+}
+
+
+async function clearSheetsData(){
+  try{
+    if(!confirm('ล้างข้อมูลทั้งหมดใน Google Sheets หรือไม่? การกระทำนี้ย้อนกลับไม่ได้')) return;
+    await callSheetApi('clearAll', {});
+    db.products = [];
+    db.bills = [];
+    db.returns = [];
+    db.heldBills = [];
+    saveDB();
+    renderCategories();
+    renderProducts();
+    renderCart();
+    renderAllPages();
+    showToast('ล้างข้อมูล Google Sheets แล้ว');
+  }catch(err){
+    console.error(err);
+    showToast('ล้างข้อมูลชีตไม่สำเร็จ');
+  }
 }
 </script>
 </body>
