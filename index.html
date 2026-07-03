@@ -4,7 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>งามตา SHOP - ระบบขายหน้าร้าน</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17">
+async function setupSheetsV2(){
+  try{
+    await callSheetApi('setup', {});
+    showToast('สร้าง/ตรวจชีต V2 แล้ว');
+  }catch(err){
+    console.error(err);
+    showToast('สร้างชีตไม่สำเร็จ');
+  }
+}
+
+</script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -939,7 +950,7 @@ window.addEventListener('error', function(e){
 const KEY = 'ngamta_shop_pos_sheet_primary_v1';
 
 const defaultData = {
-  settings: { storeName:'งามตา SHOP', cashier:'แอดมิน', receiptFooter:'ขอบคุณที่ใช้บริการ', sheetApiUrl:'https://script.google.com/macros/s/AKfycbxbd5MPrmSqw27qJ8KV9xEpMj0h5RHU9AmmhuvAttkkbXiuWjXC2HxfCZn7o12TDHgKOw/exec' },
+  settings: { storeName:'งามตา SHOP', cashier:'แอดมิน', receiptFooter:'ขอบคุณที่ใช้บริการ', sheetApiUrl:'https://script.google.com/macros/s/AKfycbw0zAIkaMoUe9LKH-x8LTEDP2B24bzgxJVqMOgvvbV3Y8GLkuMaTb76XeRUF_qNRzSo2A/exec' },
   products: [],
   bills: [],
   returns: [],
@@ -2745,9 +2756,10 @@ function renderSettingsPage(){
       <label class="font-semibold">ข้อความท้ายบิล</label>
       <input id="set-footer" value="${db.settings.receiptFooter || db.settings.footer || 'ขอบคุณที่ใช้บริการ'}" class="w-full p-4 soft-border rounded-2xl">
       <label class="font-semibold">Google Apps Script Web App URL</label>
-      <input id="set-sheet-api" value="${db.settings.sheetApiUrl || ''}" placeholder="วาง URL ที่ลงท้าย /exec" class="w-full p-4 soft-border rounded-2xl">
+      <input id="set-sheet-api" value="${db.settings.sheetApiUrl || \'https://script.google.com/macros/s/AKfycbw0zAIkaMoUe9LKH-x8LTEDP2B24bzgxJVqMOgvvbV3Y8GLkuMaTb76XeRUF_qNRzSo2A/exec\'}" placeholder="วาง URL ที่ลงท้าย /exec" class="w-full p-4 soft-border rounded-2xl">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-2 pt-2">
         <button class="btn-touch px-6 bg-primary text-white rounded-2xl font-bold">บันทึกตั้งค่า</button>
+        <button type="button" onclick="setupSheetsV2()" class="btn-touch px-6 bg-primary-soft text-primary rounded-2xl font-bold">สร้าง/ตรวจชีต</button>
         <button type="button" onclick="syncToSheets()" class="btn-touch px-6 bg-gray-900 text-white rounded-2xl font-bold">ส่งข้อมูลไปชีต</button>
         <button type="button" onclick="syncFromSheets()" class="btn-touch px-6 bg-gray-100 rounded-2xl font-bold">ดึงข้อมูลจากชีต</button>
         <button type="button" onclick="clearSheetsData()" class="btn-touch px-6 bg-red-50 text-red-600 rounded-2xl font-bold">ล้างข้อมูลชีต</button>
@@ -2761,7 +2773,7 @@ function saveSettings(e){
   db.settings.storeName = document.getElementById('set-store').value.trim() || 'งามตา SHOP';
   db.settings.cashier = document.getElementById('set-cashier').value.trim() || 'แอดมิน';
   db.settings.receiptFooter = document.getElementById('set-footer').value.trim() || 'ขอบคุณที่ใช้บริการ';
-  db.settings.sheetApiUrl = document.getElementById('set-sheet-api')?.value.trim() || '';
+  db.settings.sheetApiUrl = document.getElementById('set-sheet-api')?.value.trim() || 'https://script.google.com/macros/s/AKfycbw0zAIkaMoUe9LKH-x8LTEDP2B24bzgxJVqMOgvvbV3Y8GLkuMaTb76XeRUF_qNRzSo2A/exec';
   saveDB(); applySettings(); renderAllPages(); showToast('บันทึกการตั้งค่าแล้ว');
 }
 function resetDemoData(){
@@ -2772,8 +2784,84 @@ function resetDemoData(){
 }
 </script>
 <script>
+
+function normalizeForSheetV2(dbObj){
+  dbObj = dbObj || db;
+  dbObj.products = (dbObj.products || []).map(p => ({
+    ...p,
+    productId: p.productId || p.id || '',
+    id: p.id || p.productId || '',
+    number: p.number || String(p.id || p.productId || '').split('-')[0] || '',
+    category: p.category || p.cat || '',
+    cat: p.cat || p.category || '',
+    imageUrl: p.imageUrl || p.img || '',
+    img: p.img || p.imageUrl || ''
+  }));
+  dbObj.bills = (dbObj.bills || []).map(b => normalizeBillForSheetV2(b));
+  dbObj.sales = dbObj.bills;
+  dbObj.customers = (dbObj.customers || []).map(c => ({
+    ...c,
+    memberId: c.memberId || c.id || '',
+    id: c.id || c.memberId || '',
+    discountPercent: c.discountPercent ?? c.discount ?? 0,
+    discount: c.discount ?? c.discountPercent ?? 0
+  }));
+  dbObj.members = dbObj.customers;
+  return dbObj;
+}
+
+function normalizeBillForSheetV2(b){
+  b = b || {};
+  const net = Number(b.netTotal)||0;
+  const method = b.paymentMethod || '';
+  let projectAmount = Math.min(Number(b.projectAmount)||0, 333);
+  let projectDiffAmount = Number(b.projectDiffAmount)||0;
+  let projectDiffMethod = b.projectDiffMethod || '';
+
+  let cashAmount = Number(b.cashAmount)||0;
+  let transferAmount = Number(b.transferAmount)||0;
+  let otherAmount = Number(b.otherAmount)||0;
+
+  if(method === 'cash') cashAmount = net;
+  if(method === 'transfer') transferAmount = net;
+  if(method === 'other') otherAmount = net;
+  if(method === 'project'){
+    if(!projectAmount) projectAmount = Math.min(net, 333);
+    if(!projectDiffAmount) projectDiffAmount = Math.max(0, net - projectAmount);
+    if(projectDiffMethod === 'cash') cashAmount = projectDiffAmount;
+    if(projectDiffMethod === 'transfer') transferAmount = projectDiffAmount;
+  }
+
+  return {
+    ...b,
+    saleId: b.saleId || b.billNo,
+    billNo: b.billNo || b.saleId,
+    memberId: b.memberId || b.customerId || '',
+    memberName: b.memberName || b.customerName || '',
+    memberPhone: b.memberPhone || b.customerPhone || '',
+    customerId: b.customerId || b.memberId || '',
+    customerName: b.customerName || b.memberName || '',
+    customerPhone: b.customerPhone || b.memberPhone || '',
+    pointsEarned: Number(b.pointsEarned)||Math.floor(net/100),
+    projectAmount,
+    projectDiffAmount,
+    projectDiffMethod,
+    cashAmount,
+    transferAmount,
+    otherAmount,
+    changeAmount: Number(b.changeAmount ?? b.change)||0,
+    items: (b.items||[]).map(i => ({
+      ...i,
+      productId: i.productId || i.id || '',
+      id: i.id || i.productId || '',
+      category: i.category || i.cat || '',
+      cat: i.cat || i.category || ''
+    }))
+  };
+}
+
 async function callSheetApi(action, payload={}){
-  const url = db.settings.sheetApiUrl || '';
+  const url = db.settings.sheetApiUrl || 'https://script.google.com/macros/s/AKfycbw0zAIkaMoUe9LKH-x8LTEDP2B24bzgxJVqMOgvvbV3Y8GLkuMaTb76XeRUF_qNRzSo2A/exec';
   if(!url){
     showToast('ยังไม่ได้ตั้งค่า Google Apps Script URL');
     throw new Error('Missing Apps Script URL');
@@ -2791,7 +2879,7 @@ async function callSheetApi(action, payload={}){
 async function syncToSheets(){
   try{
     showToast('กำลังส่งข้อมูลไป Google Sheets...');
-    await callSheetApi('saveAll', db);
+    await callSheetApi('saveAll', normalizeForSheetV2(structuredClone(db)));
     showToast('ส่งข้อมูลไป Google Sheets แล้ว');
   }catch(err){
     console.error(err);
@@ -2804,12 +2892,13 @@ async function syncFromSheets(){
     showToast('กำลังดึงข้อมูลจาก Google Sheets...');
     const data = await callSheetApi('getAll', {});
     if(data.data){
-      db.products = data.data.products || db.products;
-      db.bills = data.data.bills || db.bills;
-      db.returns = data.data.returns || db.returns;
+      db.products = data.data.products || db.products || [];
+      db.bills = data.data.bills || data.data.sales || db.bills || [];
+      db.returns = data.data.returns || db.returns || [];
       db.heldBills = data.data.heldBills || db.heldBills || [];
+      db.customers = data.data.customers || data.data.members || db.customers || [];
       db.settings = {...db.settings, ...(data.data.settings || {})};
-      db.customers = data.data.customers || db.customers || [];
+      db.settings.sheetApiUrl = db.settings.sheetApiUrl || 'https://script.google.com/macros/s/AKfycbw0zAIkaMoUe9LKH-x8LTEDP2B24bzgxJVqMOgvvbV3Y8GLkuMaTb76XeRUF_qNRzSo2A/exec';
       saveDB();
       renderCategories();
       renderProducts();
@@ -2825,7 +2914,7 @@ async function syncFromSheets(){
 async function autoSyncBillToSheets(bill){
   if(!db.settings.sheetApiUrl) return;
   try{
-    await callSheetApi('appendBill', {bill});
+    await callSheetApi('appendBill', {bill: normalizeBillForSheetV2(bill), sale: normalizeBillForSheetV2(bill)});
   }catch(err){
     console.warn('Auto sync bill failed', err);
   }
