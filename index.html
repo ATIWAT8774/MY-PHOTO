@@ -974,7 +974,12 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
 
 <script>
 const KEY = 'ngamta_shop_pos_sheet_primary_v1';
-const SHEET_API_URL = '${SHEET_API_URL}';
+const SHEET_API_URL = (() => {
+  const injected = '${SHEET_API_URL}';
+  if(injected && !injected.includes('${')) return injected;
+  if(location.href.includes('/exec')) return location.href.split('?')[0];
+  return '';
+})();
 
 const defaultData = {
   settings: { storeName:'งามตา SHOP', cashier:'แอดมิน', receiptFooter:'ขอบคุณที่ใช้บริการ', sheetApiUrl:SHEET_API_URL },
@@ -989,7 +994,7 @@ clearOldLocalPOSDataOnce();
 let db = loadDB();
 if(!db.settings) db.settings = {};
 db.settings.sheetApiUrl = SHEET_API_URL;
-saveDB();
+saveDB(false);
 let cart = [];
 let selectedCustomerId = '';
 let discountType = 'percent';
@@ -1001,26 +1006,28 @@ let scannerRunning = false;
 
 
 function clearOldLocalPOSDataOnce(){
-  const marker = 'ngamta_shop_pos_sheet_primary_cleared_once';
-  if(localStorage.getItem(marker)) return;
+  // รุ่นนี้ใช้ Google Sheets เป็นฐานข้อมูลหลัก ไม่โหลดฐานข้อมูลจาก localStorage แล้ว
   Object.keys(localStorage).forEach(k=>{
-    if(k.includes('ngamta_shop_pos') || k.includes('modern_green_pos') || k.includes('MiniMart') || k.includes('minimart')){
+    if(k === KEY || k.includes('ngamta_shop_pos') || k.includes('modern_green_pos') || k.includes('MiniMart') || k.includes('minimart')){
       localStorage.removeItem(k);
     }
   });
-  localStorage.setItem(marker, '1');
 }
 
 function loadDB(){
-  const raw = localStorage.getItem(KEY);
-  if(!raw){
-    localStorage.setItem(KEY, JSON.stringify(defaultData));
-    return structuredClone(defaultData);
-  }
-  try { return JSON.parse(raw); } 
-  catch { return structuredClone(defaultData); }
+  // ใช้เป็น cache ในหน่วยความจำระหว่างเปิดหน้าเท่านั้น ข้อมูลจริงอยู่ใน Google Sheets
+  return structuredClone(defaultData);
 }
-function saveDB(){ localStorage.setItem(KEY, JSON.stringify(db)); }
+
+let sheetSaveTimer = null;
+function saveDB(autoSync=true){
+  if(autoSync) queueSheetSave();
+}
+function queueSheetSave(){
+  if(!db?.settings?.sheetApiUrl) return;
+  clearTimeout(sheetSaveTimer);
+  sheetSaveTimer = setTimeout(()=>syncToSheets({silent:true}), 700);
+}
 function money(n){ return (Number(n)||0).toLocaleString('th-TH',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' บาท'; }
 
 
@@ -1441,7 +1448,7 @@ async function closeCameraScanner(){
   }
 }
 
-function checkout(){
+async function checkout(){
   if(!cart.length) return showToast('ยังไม่มีสินค้าในตะกร้า');
   const sub = subtotal(), disc = discountAmount(), net = Math.max(0, sub-disc);
   const cash = Number(document.getElementById('cash-received').value)||0;
@@ -1494,8 +1501,8 @@ function checkout(){
     }
   }
   db.bills.push(bill);
-  saveDB();
-  autoSyncBillToSheets(bill);
+  saveDB(false);
+  await autoSyncBillToSheets(bill);
   lastBill = bill;
   cart = [];
   selectedCustomerId = '';
@@ -2799,19 +2806,17 @@ function renderSettingsPage(){
     </form>`;
 }
 
-function saveSettings(e){
+async function saveSettings(e){
   e.preventDefault();
   db.settings.storeName = document.getElementById('set-store').value.trim() || 'งามตา SHOP';
   db.settings.cashier = document.getElementById('set-cashier').value.trim() || 'แอดมิน';
   db.settings.receiptFooter = document.getElementById('set-footer').value.trim() || 'ขอบคุณที่ใช้บริการ';
   db.settings.sheetApiUrl = document.getElementById('set-sheet-api')?.value.trim() || SHEET_API_URL;
-  saveDB(); applySettings(); renderAllPages(); showToast('บันทึกการตั้งค่าแล้ว');
+  saveDB(false); applySettings(); renderAllPages(); await syncToSheets(); showToast('บันทึกการตั้งค่าแล้ว');
 }
-function resetDemoData(){
-  if(!confirm('รีเซ็ตข้อมูลทั้งหมดกลับเป็นตัวอย่างหรือไม่')) return;
-  localStorage.setItem(KEY, JSON.stringify(defaultData));
-  db = loadDB(); cart=[]; selectedCat='ทั้งหมด';
-  applySettings(); renderCategories(); renderProducts(); renderCart(); renderAllPages(); updateTodaySales();
+async function resetDemoData(){
+  if(!confirm('รีเซ็ตข้อมูลทั้งหมดใน Google Sheets หรือไม่')) return;
+  await clearSheetsData();
 }
 </script>
 <script>
@@ -2904,8 +2909,8 @@ async function initialSyncFromSheets(){
       db.returns = data.data.returns || db.returns || [];
       db.customers = data.data.customers || data.data.members || db.customers || [];
       db.settings = {...db.settings, ...(data.data.settings || {})};
-      db.settings.sheetApiUrl = SHEET_API_URL;
-      saveDB();
+      db.settings.sheetApiUrl = db.settings.sheetApiUrl || SHEET_API_URL;
+      saveDB(false);
       applySettings();
       renderCategories();
       renderProducts();
@@ -2921,7 +2926,7 @@ async function initialSyncFromSheets(){
 }
 
 async function callSheetApi(action, payload={}){
-  const url = (db.settings && db.settings.sheetApiUrl) || SHEET_API_URL;
+  const url = ((db.settings && db.settings.sheetApiUrl) || SHEET_API_URL || '').trim();
   if(!url){
     showToast('ยังไม่ได้ตั้งค่า Google Apps Script URL');
     throw new Error('Missing Apps Script URL');
@@ -2936,14 +2941,14 @@ async function callSheetApi(action, payload={}){
   if(!data.ok) throw new Error(data.error || 'Google Sheet error');
   return data;
 }
-async function syncToSheets(){
+async function syncToSheets(options={}){
   try{
-    showToast('กำลังส่งข้อมูลไป Google Sheets...');
+    if(!options.silent) showToast('กำลังส่งข้อมูลไป Google Sheets...');
     await callSheetApi('saveAll', normalizeForSheetV2(structuredClone(db)));
-    showToast('ส่งข้อมูลไป Google Sheets แล้ว');
+    if(!options.silent) showToast('ส่งข้อมูลไป Google Sheets แล้ว');
   }catch(err){
     console.error(err);
-    showToast('ส่งข้อมูลไม่สำเร็จ');
+    if(!options.silent) showToast('ส่งข้อมูลไม่สำเร็จ');
   }
 }
 async function syncFromSheets(){
@@ -2958,8 +2963,8 @@ async function syncFromSheets(){
       db.heldBills = data.data.heldBills || db.heldBills || [];
       db.customers = data.data.customers || data.data.members || db.customers || [];
       db.settings = {...db.settings, ...(data.data.settings || {})};
-      db.settings.sheetApiUrl = SHEET_API_URL;
-      saveDB();
+      db.settings.sheetApiUrl = db.settings.sheetApiUrl || SHEET_API_URL;
+      saveDB(false);
       renderCategories();
       renderProducts();
       renderCart();
