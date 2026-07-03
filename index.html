@@ -42,6 +42,7 @@ async function syncFromSheets(){
       db.returns = data.data.returns || db.returns;
       db.heldBills = data.data.heldBills || db.heldBills || [];
       db.settings = {...db.settings, ...(data.data.settings || {})};
+      db.customers = data.data.customers || db.customers || [];
       saveDB();
       renderCategories();
       renderProducts();
@@ -76,7 +77,9 @@ function resetData(){
     products: [],
     bills: [],
     returns: [],
-    heldBills: []
+  customers: [],
+    heldBills: [],
+    customers: []
   };
   saveDB();
   renderCategories();
@@ -533,6 +536,9 @@ async function clearSheetsData(){
         <button data-page="reports" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
           <i data-lucide="bar-chart" class="w-5 h-5"></i><span class="sidebar-text">รายงาน</span>
         </button>
+        <button data-page="members" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
+          <i data-lucide="user-round" class="w-5 h-5"></i><span class="sidebar-text">สมาชิก</span>
+        </button>
         <button data-page="settings" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
           <i data-lucide="settings" class="w-5 h-5"></i><span class="sidebar-text">ตั้งค่าระบบ</span>
         </button>
@@ -605,6 +611,13 @@ async function clearSheetsData(){
 
             <div class="flex-1 overflow-y-auto px-5 py-3" id="cart-items"></div>
 
+            <div class="px-5 py-3 border-t border-gray-100">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-semibold">สมาชิก</span>
+                <button onclick="openMemberModal()" class="text-xs text-primary font-bold">เพิ่มสมาชิก</button>
+              </div>
+              <select id="member-select" onchange="selectMemberForCart(this.value)" class="w-full p-3 soft-border rounded-xl text-sm"></select>
+            </div>
             <div class="px-5 py-3 border-t border-gray-100">
               <div class="flex items-center justify-between mb-2">
                 <span class="text-sm font-semibold">ส่วนลดทั้งบิล</span>
@@ -689,10 +702,36 @@ async function clearSheetsData(){
       <section id="page-stock" class="page flex-1 overflow-y-auto p-6"></section>
       <section id="page-returns" class="page flex-1 overflow-y-auto p-6"></section>
       <section id="page-reports" class="page flex-1 overflow-y-auto p-6"></section>
+      <section id="page-members" class="page flex-1 overflow-y-auto p-6 scroll-safe"></section>
       <section id="page-settings" class="page flex-1 overflow-y-auto p-6"></section>
     </main>
   </div>
 
+
+
+  <div id="member-modal" class="hidden fixed inset-0 bg-black/40 z-[92] flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-3xl p-6 max-w-xl w-full card-shadow modal-card-mobile">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="member-modal-title" class="text-xl font-bold">เพิ่มสมาชิก</h3>
+        <button onclick="closeMemberModal()" class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center"><i data-lucide="x"></i></button>
+      </div>
+      <form onsubmit="saveMemberModal(event)" class="space-y-2">
+        <input id="member-original-id" type="hidden">
+        <input id="member-name" class="w-full p-3 soft-border rounded-xl" placeholder="ชื่อลูกค้า">
+        <input id="member-phone" class="w-full p-3 soft-border rounded-xl" placeholder="เบอร์โทร">
+        <input id="member-note" class="w-full p-3 soft-border rounded-xl" placeholder="หมายเหตุ">
+        <div class="grid grid-cols-2 gap-2">
+          <input id="member-points" type="number" class="p-3 soft-border rounded-xl" placeholder="แต้ม" value="0">
+          <input id="member-discount" type="number" class="p-3 soft-border rounded-xl" placeholder="ส่วนลดประจำ (%)" value="0">
+        </div>
+        <div class="grid grid-cols-3 gap-2 pt-3">
+          <button id="member-delete-btn" type="button" onclick="deleteMemberFromModal()" class="btn-touch bg-red-50 text-red-600 rounded-2xl font-bold hidden">ลบ</button>
+          <button type="button" onclick="closeMemberModal()" class="btn-touch bg-gray-100 rounded-2xl font-bold">ยกเลิก</button>
+          <button class="btn-touch bg-primary text-white rounded-2xl font-bold">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <div id="product-modal" class="hidden fixed inset-0 bg-black/40 z-[88] flex items-center justify-center p-4 no-print">
     <div class="bg-white rounded-3xl p-6 max-w-2xl w-full card-shadow modal-card-mobile">
@@ -715,7 +754,44 @@ async function clearSheetsData(){
           <input id="pm-cat" class="p-3 soft-border rounded-xl" placeholder="หมวดหมู่">
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <input id="pm-size" class="p-3 soft-border rounded-xl" placeholder="ไซซ์">
+          <select id="pm-size" class="p-3 soft-border rounded-xl"><option value="">เลือกไซซ์</option>
+<option value="Free Size">Free Size</option>
+<option value="XS">XS</option>
+<option value="S">S</option>
+<option value="M">M</option>
+<option value="L">L</option>
+<option value="XL">XL</option>
+<option value="XXL">XXL</option>
+<option value="3XL">3XL</option>
+<option value="4XL">4XL</option>
+<option value="5XL">5XL</option>
+<option value="24">24</option>
+<option value="25">25</option>
+<option value="26">26</option>
+<option value="27">27</option>
+<option value="28">28</option>
+<option value="29">29</option>
+<option value="30">30</option>
+<option value="31">31</option>
+<option value="32">32</option>
+<option value="33">33</option>
+<option value="34">34</option>
+<option value="35">35</option>
+<option value="36">36</option>
+<option value="37">37</option>
+<option value="38">38</option>
+<option value="39">39</option>
+<option value="40">40</option>
+<option value="41">41</option>
+<option value="42">42</option>
+<option value="44">44</option>
+<option value="46">46</option>
+<option value="48">48</option>
+<option value="50">50</option>
+<option value="52">52</option>
+<option value="54">54</option>
+<option value="56">56</option>
+<option value="อื่น ๆ">อื่น ๆ</option></select>
           <input id="pm-color" class="p-3 soft-border rounded-xl" placeholder="สี">
         </div>
         <div class="grid grid-cols-3 gap-2">
@@ -770,7 +846,44 @@ async function clearSheetsData(){
           <input id="new-cat" class="p-3 soft-border rounded-xl" placeholder="หมวดหมู่">
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <input id="new-size" class="p-3 soft-border rounded-xl" placeholder="ไซซ์">
+          <select id="new-size" class="p-3 soft-border rounded-xl"><option value="">เลือกไซซ์</option>
+<option value="Free Size">Free Size</option>
+<option value="XS">XS</option>
+<option value="S">S</option>
+<option value="M">M</option>
+<option value="L">L</option>
+<option value="XL">XL</option>
+<option value="XXL">XXL</option>
+<option value="3XL">3XL</option>
+<option value="4XL">4XL</option>
+<option value="5XL">5XL</option>
+<option value="24">24</option>
+<option value="25">25</option>
+<option value="26">26</option>
+<option value="27">27</option>
+<option value="28">28</option>
+<option value="29">29</option>
+<option value="30">30</option>
+<option value="31">31</option>
+<option value="32">32</option>
+<option value="33">33</option>
+<option value="34">34</option>
+<option value="35">35</option>
+<option value="36">36</option>
+<option value="37">37</option>
+<option value="38">38</option>
+<option value="39">39</option>
+<option value="40">40</option>
+<option value="41">41</option>
+<option value="42">42</option>
+<option value="44">44</option>
+<option value="46">46</option>
+<option value="48">48</option>
+<option value="50">50</option>
+<option value="52">52</option>
+<option value="54">54</option>
+<option value="56">56</option>
+<option value="อื่น ๆ">อื่น ๆ</option></select>
           <input id="new-color" class="p-3 soft-border rounded-xl" placeholder="สี">
         </div>
         <div class="grid grid-cols-3 gap-2">
@@ -858,16 +971,19 @@ async function clearSheetsData(){
 const KEY = 'ngamta_shop_pos_sheet_primary_v1';
 
 const defaultData = {
-  settings: { storeName:'งามตา SHOP', cashier:'แอดมิน', receiptFooter:'ขอบคุณที่ใช้บริการ', sheetApiUrl:'' },
+  settings: { storeName:'งามตา SHOP', cashier:'แอดมิน', receiptFooter:'ขอบคุณที่ใช้บริการ', sheetApiUrl:'https://script.google.com/macros/s/AKfycbxbd5MPrmSqw27qJ8KV9xEpMj0h5RHU9AmmhuvAttkkbXiuWjXC2HxfCZn7o12TDHgKOw/exec' },
   products: [],
   bills: [],
   returns: [],
-  heldBills: []
+  customers: [],
+  heldBills: [],
+    customers: []
 };
 
 clearOldLocalPOSDataOnce();
 let db = loadDB();
 let cart = [];
+                selectedCustomerId = '';
 let discountType = 'percent';
 let paymentMethod = 'cash';
 let selectedCat = 'ทั้งหมด';
@@ -1292,6 +1408,12 @@ async function closeCameraScanner(){
     try{ await html5QrCode.stop(); }catch(e){}
     scannerRunning = false;
   }
+  if(scannerMode === 'receive' && receiveModalWasOpen){
+    document.getElementById('receive-modal')?.classList.remove('hidden');
+    renderReceiveList();
+    setTimeout(()=>document.getElementById('receive-scan-input')?.focus(),100);
+    receiveModalWasOpen = false;
+  }
 }
 
 function checkout(){
@@ -1317,7 +1439,18 @@ function checkout(){
     const p = db.products.find(x=>x.id===item.id);
     if(p) p.stock -= item.qty;
   });
-  db.bills.push(bill);
+  if(selectedCustomerId){
+                const cust = db.customers?.find(c=>c.id===selectedCustomerId);
+                if(cust){
+                  bill.customerId = cust.id;
+                  bill.customerName = cust.name;
+                  bill.customerPhone = cust.phone || '';
+                  cust.totalSpend = (Number(cust.totalSpend)||0) + (Number(bill.netTotal)||0);
+                  cust.points = (Number(cust.points)||0) + Math.floor((Number(bill.netTotal)||0)/100);
+                  cust.lastPurchaseAt = new Date().toISOString();
+                }
+              }
+              db.bills.push(bill);
   saveDB();
   autoSyncBillToSheets(bill);
   lastBill = bill;
@@ -1395,6 +1528,8 @@ function renderAllPages(){
   renderStockPage();
   renderReturnsPage();
   renderReportsPage();
+  renderMembersPage();
+  renderMemberSelect();
   renderSettingsPage();
   lucide.createIcons();
 }
@@ -1507,8 +1642,10 @@ function renderSingleBarcodePreview(code){
 }
 let currentBarcodeProduct = null;
 let receiveItems = [];
+let selectedCustomerId = '';
 let pendingNewBarcode = '';
 let scannerMode = 'sale';
+let receiveModalWasOpen = false;
 let lastScannedCode = '';
 let lastScannedAt = 0;
 function showBarcode(id){
@@ -1580,6 +1717,41 @@ function renderPrintBarcodes(){
 
 
 
+
+
+function setSizeSelectValue(id, value){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const val = value || '';
+  const exists = Array.from(el.options).some(o => o.value === val);
+  if(val && !exists){
+    const option = document.createElement('option');
+    option.value = val;
+    option.textContent = val;
+    el.appendChild(option);
+  }
+  el.value = val;
+}
+
+function getSelectedSize(id){
+  const el = document.getElementById(id);
+  if(!el) return '';
+  const value = el.value;
+  if(value === 'อื่น ๆ'){
+    const custom = prompt('กรอกไซซ์เอง');
+    if(custom){
+      const option = document.createElement('option');
+      option.value = custom.trim();
+      option.textContent = custom.trim();
+      option.selected = true;
+      el.appendChild(option);
+      return custom.trim();
+    }
+    return '';
+  }
+  return value;
+}
+
 function openProductModal(id=''){
   const modal = document.getElementById('product-modal');
   if(!modal){
@@ -1602,7 +1774,7 @@ function openProductModal(id=''){
   set('pm-name', p?.name || '');
   set('pm-type', p?.type || '');
   set('pm-cat', p?.cat || '');
-  set('pm-size', p?.size || '');
+  setSizeSelectValue('pm-size', p?.size || '');
   set('pm-color', p?.color || '');
   set('pm-cost', p?.cost ?? '');
   set('pm-price', p?.price ?? '');
@@ -1659,7 +1831,7 @@ function saveProductModal(e){
     name,
     type: document.getElementById('pm-type').value.trim() || 'ทั่วไป',
     cat: document.getElementById('pm-cat').value.trim() || 'ทั่วไป',
-    size: document.getElementById('pm-size').value.trim() || 'Free Size',
+    size: getSelectedSize('pm-size') || 'Free Size',
     color: document.getElementById('pm-color').value.trim() || '-',
     cost: Number(document.getElementById('pm-cost').value) || 0,
     price: Number(document.getElementById('pm-price').value) || 0,
@@ -1702,6 +1874,9 @@ function openReceiveModal(){
 }
 function openReceiveCameraScanner(){
   scannerMode = 'receive';
+  const rm = document.getElementById('receive-modal');
+  receiveModalWasOpen = rm && !rm.classList.contains('hidden');
+  if(rm) rm.classList.add('hidden');
   openCameraScanner();
 }
 function closeReceiveModal(){
@@ -1750,7 +1925,7 @@ function saveNewProductFromScan(e){
     id, barcode, name,
     type: document.getElementById('new-type').value.trim() || 'ทั่วไป',
     cat: document.getElementById('new-cat').value.trim() || 'ทั่วไป',
-    size: document.getElementById('new-size').value.trim() || 'Free Size',
+    size: getSelectedSize('new-size') || 'Free Size',
     color: document.getElementById('new-color').value.trim() || '-',
     cost: Number(document.getElementById('new-cost').value) || 0,
     price: Number(document.getElementById('new-price').value) || 0,
@@ -1847,7 +2022,44 @@ function renderProductsPage(){
           <input id="product-cat" placeholder="หมวดหมู่ เช่น เสื้อยืด / ยีนส์" class="w-full p-3 soft-border rounded-xl">
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <input id="product-size" placeholder="ไซซ์ เช่น S / M / L / Free Size" class="w-full p-3 soft-border rounded-xl">
+          <select id="product-size" class="w-full p-3 soft-border rounded-xl"><option value="">เลือกไซซ์</option>
+<option value="Free Size">Free Size</option>
+<option value="XS">XS</option>
+<option value="S">S</option>
+<option value="M">M</option>
+<option value="L">L</option>
+<option value="XL">XL</option>
+<option value="XXL">XXL</option>
+<option value="3XL">3XL</option>
+<option value="4XL">4XL</option>
+<option value="5XL">5XL</option>
+<option value="24">24</option>
+<option value="25">25</option>
+<option value="26">26</option>
+<option value="27">27</option>
+<option value="28">28</option>
+<option value="29">29</option>
+<option value="30">30</option>
+<option value="31">31</option>
+<option value="32">32</option>
+<option value="33">33</option>
+<option value="34">34</option>
+<option value="35">35</option>
+<option value="36">36</option>
+<option value="37">37</option>
+<option value="38">38</option>
+<option value="39">39</option>
+<option value="40">40</option>
+<option value="41">41</option>
+<option value="42">42</option>
+<option value="44">44</option>
+<option value="46">46</option>
+<option value="48">48</option>
+<option value="50">50</option>
+<option value="52">52</option>
+<option value="54">54</option>
+<option value="56">56</option>
+<option value="อื่น ๆ">อื่น ๆ</option></select>
           <input id="product-color" placeholder="สี เช่น ดำ / ขาว / ครีม" class="w-full p-3 soft-border rounded-xl">
         </div>
         <div class="grid grid-cols-2 gap-2">
@@ -1906,7 +2118,7 @@ function saveProduct(e){
     barcode,
     name:document.getElementById('product-name').value.trim(),
     type:document.getElementById('product-type').value.trim() || 'ทั่วไป',
-    size:document.getElementById('product-size').value.trim() || 'Free Size',
+    size:getSelectedSize('product-size') || 'Free Size',
     color:document.getElementById('product-color').value.trim() || '-',
     price:Number(document.getElementById('product-price').value)||0,
     cost:Number(document.getElementById('product-cost').value)||0,
@@ -2216,6 +2428,118 @@ function getReportRange(period){
   }
   return {start,end};
 }
+
+function ensureCustomers(){
+  if(!db.customers) db.customers = [];
+}
+function renderMemberSelect(){
+  ensureCustomers();
+  const sel = document.getElementById('member-select');
+  if(!sel) return;
+  sel.innerHTML = `<option value="">ไม่ระบุสมาชิก</option>` + db.customers.map(c=>`<option value="${c.id}" ${selectedCustomerId===c.id?'selected':''}>${c.name} | ${c.phone || '-'}</option>`).join('');
+}
+function selectMemberForCart(id){
+  selectedCustomerId = id || '';
+  const c = db.customers?.find(x=>x.id===selectedCustomerId);
+  if(c && Number(c.discount)>0){
+    document.getElementById('discount-form')?.classList.remove('hidden');
+    const dv = document.getElementById('discount-value');
+    const dr = document.getElementById('discount-reason');
+    if(dv && (!dv.value || Number(dv.value)===0)){
+      discountType = 'percent';
+      dv.value = Number(c.discount) || 0;
+      if(dr) dr.value = 'ลูกค้าประจำ';
+      if(typeof setDiscountType === 'function') setDiscountType('percent');
+      updateSummary();
+    }
+  }
+}
+function openMemberModal(id=''){
+  ensureCustomers();
+  const isEdit = !!id;
+  const c = isEdit ? db.customers.find(x=>x.id===id) : null;
+  document.getElementById('member-modal-title').textContent = isEdit ? 'แก้ไขสมาชิก' : 'เพิ่มสมาชิก';
+  document.getElementById('member-original-id').value = c?.id || '';
+  document.getElementById('member-name').value = c?.name || '';
+  document.getElementById('member-phone').value = c?.phone || '';
+  document.getElementById('member-note').value = c?.note || '';
+  document.getElementById('member-points').value = c?.points || 0;
+  document.getElementById('member-discount').value = c?.discount || 0;
+  document.getElementById('member-delete-btn').classList.toggle('hidden', !isEdit);
+  document.getElementById('member-modal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('member-name')?.focus(),100);
+  if(window.lucide) lucide.createIcons();
+}
+function closeMemberModal(){
+  document.getElementById('member-modal')?.classList.add('hidden');
+}
+function saveMemberModal(e){
+  e.preventDefault();
+  ensureCustomers();
+  const originalId = document.getElementById('member-original-id').value;
+  const name = document.getElementById('member-name').value.trim();
+  const phone = document.getElementById('member-phone').value.trim();
+  if(!name) return showToast('กรอกชื่อลูกค้า');
+  const member = {
+    id: originalId || ('C' + Date.now()),
+    name,
+    phone,
+    note: document.getElementById('member-note').value.trim(),
+    points: Number(document.getElementById('member-points').value)||0,
+    discount: Number(document.getElementById('member-discount').value)||0,
+    totalSpend: originalId ? (db.customers.find(c=>c.id===originalId)?.totalSpend || 0) : 0,
+    lastPurchaseAt: originalId ? (db.customers.find(c=>c.id===originalId)?.lastPurchaseAt || '') : ''
+  };
+  const idx = db.customers.findIndex(c=>c.id===originalId);
+  if(idx>=0) db.customers[idx]=member;
+  else db.customers.push(member);
+  saveDB();
+  closeMemberModal();
+  renderMemberSelect();
+  renderMembersPage();
+  showToast('บันทึกสมาชิกแล้ว');
+}
+function deleteMemberFromModal(){
+  const id = document.getElementById('member-original-id').value;
+  if(!id) return;
+  if(!confirm('ลบสมาชิกนี้หรือไม่')) return;
+  db.customers = (db.customers||[]).filter(c=>c.id!==id);
+  if(selectedCustomerId===id) selectedCustomerId='';
+  saveDB();
+  closeMemberModal();
+  renderMemberSelect();
+  renderMembersPage();
+  showToast('ลบสมาชิกแล้ว');
+}
+function renderMembersPage(){
+  ensureCustomers();
+  const q = (localStorage.getItem(KEY+'_member_search') || '').toLowerCase();
+  const list = db.customers.filter(c=>!q || `${c.name} ${c.phone} ${c.note}`.toLowerCase().includes(q));
+  const page = document.getElementById('page-members');
+  if(!page) return;
+  page.innerHTML = pageTitle('สมาชิก','') + `
+    <div class="bg-white rounded-3xl card-shadow p-4 mb-4 flex flex-col md:flex-row gap-2">
+      <input value="${q}" oninput="localStorage.setItem(KEY+'_member_search',this.value);renderMembersPage()" placeholder="ค้นหาชื่อ/เบอร์โทร" class="flex-1 p-4 soft-border rounded-2xl">
+      <button onclick="openMemberModal()" class="px-5 bg-primary text-white rounded-2xl font-bold">เพิ่มสมาชิก</button>
+    </div>
+    <div class="bg-white rounded-3xl card-shadow overflow-hidden">
+      <table class="responsive-table w-full text-left">
+        <thead class="bg-gray-50 text-gray-500"><tr><th class="p-4">ชื่อ</th><th>เบอร์</th><th>แต้ม</th><th>ยอดซื้อรวม</th><th class="p-4 text-right">จัดการ</th></tr></thead>
+        <tbody>
+          ${list.map(c=>`
+            <tr class="border-t">
+              <td class="p-4 font-bold">${c.name}<br><span class="text-sm text-gray-400">${c.note || ''}</span></td>
+              <td>${c.phone || '-'}</td>
+              <td>${c.points || 0}</td>
+              <td>${money(c.totalSpend || 0)}</td>
+              <td class="p-4 text-right"><button onclick="openMemberModal('${c.id}')" class="px-3 py-2 bg-gray-100 rounded-xl font-semibold">แก้ไข</button></td>
+            </tr>
+          `).join('') || '<tr><td colspan="5" class="p-8 text-center text-gray-400">ยังไม่มีสมาชิก</td></tr>'}
+        </tbody>
+      </table>
+    </div>`;
+}
+
 function renderReportsPage(){
   const period = localStorage.getItem(KEY+'_report_period') || 'today';
   const labels = {today:'วันนี้', week:'สัปดาห์นี้', month:'เดือนนี้', year:'ปีนี้'};
