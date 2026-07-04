@@ -974,6 +974,7 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
 
 <script>
 const KEY = 'ngamta_shop_pos_sheet_primary_v1';
+const SHEET_CACHE_KEY = 'ngamta_shop_pos_sheet_cache_v3';
 const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbxbd5MPrmSqw27qJ8KV9xEpMj0h5RHU9AmmhuvAttkkbXiuWjXC2HxfCZn7o12TDHgKOw/exec';
 
 const defaultData = {
@@ -995,29 +996,59 @@ let selectedCustomerId = '';
 let discountType = 'percent';
 let paymentMethod = 'cash';
 let selectedCat = 'ทั้งหมด';
+let productManageTypeFilter = 'ทั้งหมด';
 let lastBill = null;
 let html5QrCode = null;
 let scannerRunning = false;
 
 
 function clearOldLocalPOSDataOnce(){
-  // รุ่นนี้ใช้ Google Sheets เป็นฐานข้อมูลหลัก ไม่โหลดฐานข้อมูลจาก localStorage แล้ว
+  // ล้างเฉพาะฐานข้อมูล localStorage รุ่นเก่า แต่ไม่ล้าง cache ที่ใช้เร่งตอนเปิดเว็บ
   Object.keys(localStorage).forEach(k=>{
-    if(k === KEY || k.includes('ngamta_shop_pos') || k.includes('modern_green_pos') || k.includes('MiniMart') || k.includes('minimart')){
+    if(k === KEY || k.includes('modern_green_pos') || k.includes('MiniMart') || k.includes('minimart')){
       localStorage.removeItem(k);
     }
   });
 }
 
+function normalizeLoadedDB(data){
+  const next = structuredClone(defaultData);
+  data = data || {};
+  next.products = data.products || data.items || [];
+  next.bills = data.bills || data.sales || [];
+  next.returns = data.returns || [];
+  next.heldBills = data.heldBills || [];
+  next.customers = data.customers || data.members || [];
+  next.settings = {...defaultData.settings, ...(data.settings || {}), sheetApiUrl:SHEET_API_URL};
+  return next;
+}
+
+function loadSheetCache(){
+  try{
+    const raw = localStorage.getItem(SHEET_CACHE_KEY);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(!parsed || !parsed.data) return null;
+    return normalizeLoadedDB(parsed.data);
+  }catch(e){ return null; }
+}
+
+function saveSheetCache(data){
+  try{
+    localStorage.setItem(SHEET_CACHE_KEY, JSON.stringify({cachedAt:new Date().toISOString(), data:normalizeForSheetV2(structuredClone(data))}));
+  }catch(e){ console.warn('cache save failed', e); }
+}
+
 function loadDB(){
-  // ใช้เป็น cache ในหน่วยความจำระหว่างเปิดหน้าเท่านั้น ข้อมูลจริงอยู่ใน Google Sheets
-  return structuredClone(defaultData);
+  // Google Sheets ยังเป็นฐานข้อมูลหลัก ส่วน localStorage นี้เป็น cache เพื่อให้เปิดเว็บแล้วพร้อมขายทันที
+  return loadSheetCache() || structuredClone(defaultData);
 }
 
 let sheetSaveTimer = null;
 function saveDB(autoSync=true){
-  // กันไม่ให้หน้าเว็บส่งข้อมูลว่าง/ค่าเริ่มต้นไปทับชีต ระหว่างที่ยังโหลดจากชีตไม่เสร็จ
-  if(autoSync && window.__sheetReady === true) queueSheetSave();
+  // เวอร์ชันนี้ไม่ส่ง saveAll ทุกครั้งแล้ว เพราะช้ากับข้อมูลเยอะ
+  // การเพิ่ม/แก้/ลบสินค้า และบิล จะเรียก API เฉพาะรายการแทน
+  // ปุ่มส่งข้อมูลไปชีตในหน้าตั้งค่ายังใช้ syncToSheets ได้ตามเดิม
 }
 function queueSheetSave(){
   if(!db?.settings?.sheetApiUrl) return;
@@ -1071,15 +1102,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     closeDrawer();
     document.querySelectorAll('.bottom-btn').forEach(b=>b.classList.toggle('active', b.dataset.page==='sales'));
 
-    // โหลดฐานข้อมูลจาก Google Sheets ก่อน render หน้า เพื่อไม่ให้รีเฟรชแล้วขึ้นว่าง
-    await initialSyncFromSheets();
-
+    // เปิดเว็บให้พร้อมใช้ทันทีจาก cache ล่าสุด แล้วค่อยอัปเดตจาก Google Sheets แบบอัตโนมัติ
     applySettings();
     renderCategories();
     renderProducts();
     renderCart();
     renderAllPages();
     updateTodaySales();
+
+    initialSyncFromSheets({background:true});
   }catch(err){
     console.error('INIT ERROR', err);
     const t = document.getElementById('toast');
@@ -1901,7 +1932,7 @@ function renderModalBarcodePreview(code){
     try{ JsBarcode(svg, code, { format:'CODE128', width:2, height:56, displayValue:true, fontSize:14, margin:8 }); }catch(e){}
   }
 }
-function saveProductModal(e){
+async function saveProductModal(e){
   e.preventDefault();
   const originalId = document.getElementById('pm-original-id').value.trim();
   const numberValue = document.getElementById('pm-number')?.value.trim() || '';
@@ -1920,41 +1951,65 @@ function saveProductModal(e){
 
   const product = {
     id,
+    productId: id,
+    originalId,
     barcode,
     name,
     type: document.getElementById('pm-type').value.trim() || 'ทั่วไป',
     cat: document.getElementById('pm-cat').value.trim() || 'ทั่วไป',
+    category: document.getElementById('pm-cat').value.trim() || 'ทั่วไป',
     number: numberValue || splitProductNumberFromId(id),
     size: sizeValue,
     color: colorValue || '-',
     cost: Number(document.getElementById('pm-cost').value) || 0,
     price: Number(document.getElementById('pm-price').value) || 0,
     stock: Number(document.getElementById('pm-stock').value) || 0,
-    img: document.getElementById('pm-img').value.trim()
+    img: document.getElementById('pm-img').value.trim(),
+    imageUrl: document.getElementById('pm-img').value.trim()
   };
 
-  const idx = db.products.findIndex(p=>p.id === originalId);
-  if(idx >= 0) db.products[idx] = product;
-  else db.products.push(product);
+  try{
+    showToast('กำลังบันทึกสินค้า...');
+    const result = await callSheetApi('createProduct', {product, originalId});
+    const savedProduct = result.data || product;
+    const idx = db.products.findIndex(p=>p.id === originalId || p.id === savedProduct.id);
+    if(idx >= 0) db.products[idx] = savedProduct;
+    else db.products.push(savedProduct);
+    if(originalId && originalId !== savedProduct.id){
+      db.products = db.products.filter((p, i) => p.id !== originalId || i === db.products.findIndex(x=>x.id===savedProduct.id));
+    }
+    closeProductModal();
+    refreshProductViewsOnly();
+    showToast('บันทึกสินค้าแล้ว');
+  }catch(err){
+    console.error(err);
+    showToast('บันทึกสินค้าไม่สำเร็จ');
+  }
+}
 
-  saveDB();
-  closeProductModal();
+function refreshProductViewsOnly(){
   renderCategories();
   renderProducts();
-  renderAllPages();
-  showToast('บันทึกสินค้าแล้ว');
+  renderProductsPage();
+  if(document.getElementById('page-stock')?.classList.contains('active')) renderStockPage();
+  updateTodaySales();
+  safeCreateIcons();
 }
-function deleteProductFromModal(){
+async function deleteProductFromModal(){
   const id = document.getElementById('pm-original-id').value.trim();
   if(!id) return;
   if(!confirm('ลบสินค้านี้หรือไม่')) return;
-  db.products = db.products.filter(p=>p.id !== id);
-  saveDB();
-  closeProductModal();
-  renderCategories();
-  renderProducts();
-  renderAllPages();
-  showToast('ลบสินค้าแล้ว');
+  try{
+    showToast('กำลังลบสินค้า...');
+    await callSheetApi('deleteProduct', {productId:id});
+    db.products = db.products.filter(p=>p.id !== id);
+    closeProductModal();
+    refreshProductViewsOnly();
+    showToast('ลบสินค้าแล้ว');
+  }catch(err){
+    console.error(err);
+    showToast('ลบสินค้าไม่สำเร็จ');
+  }
 }
 
 
@@ -2091,112 +2146,67 @@ function commitReceiveStock(){
   showToast('บันทึกเข้าสต๊อกแล้ว');
 }
 
+function productManageTypes(){
+  return ['ทั้งหมด', ...new Set(db.products.map(p=>p.type || 'ทั่วไป').filter(Boolean))];
+}
+function setProductManageTypeFilter(type){
+  productManageTypeFilter = type || 'ทั้งหมด';
+  renderProductsPage();
+}
+function productManageFilteredProducts(){
+  return db.products.filter(p => productManageTypeFilter === 'ทั้งหมด' || (p.type || 'ทั่วไป') === productManageTypeFilter);
+}
+function encAttr(v){ return encodeURIComponent(String(v ?? '')); }
+function openProductModalEncoded(v){ openProductModal(decodeURIComponent(v)); }
+function showBarcodeEncoded(v){ showBarcode(decodeURIComponent(v)); }
+function deleteProductEncoded(v){ deleteProduct(decodeURIComponent(v)); }
+
 function renderProductsPage(){
   const box = document.getElementById('page-products');
+  const types = productManageTypes();
+  if(!types.includes(productManageTypeFilter)) productManageTypeFilter = 'ทั้งหมด';
+  const productList = productManageFilteredProducts();
   box.innerHTML = pageTitle('จัดการสินค้าเสื้อผ้า','เพิ่มสินค้า แยกประเภท ไซซ์ สี และสร้างบาร์โค้ด CODE128') + `
     <div class="grid grid-cols-1 gap-5">
-      <div class="bg-white rounded-3xl card-shadow p-5">
+      <div class="bg-white rounded-3xl card-shadow p-5 flex flex-wrap gap-3 items-center justify-between">
         <button onclick="openProductModal()" class="btn-touch px-5 bg-primary text-white rounded-2xl font-bold flex items-center gap-2"><i data-lucide="plus" class="w-5 h-5"></i>เพิ่มสินค้า</button>
+        <div class="text-sm text-gray-500">แสดง ${productList.length} / ${db.products.length} รายการ</div>
       </div>
-      <form onsubmit="saveProduct(event)" class="hidden bg-white rounded-3xl card-shadow p-5 space-y-3">
-        <h3 class="text-xl font-bold">เพิ่ม/แก้ไขสินค้า</h3><p class="text-sm text-gray-500">กรอกต้นทุนเพื่อคำนวณกำไรในรายงาน</p>
-        <div class="grid grid-cols-2 gap-2">
-          <input id="product-id" placeholder="รหัสสินค้า เช่น TSH-BLK-M" class="w-full p-3 soft-border rounded-xl">
-          <button type="button" onclick="generateProductCode()" class="bg-gray-100 rounded-xl font-semibold">สร้างรหัส</button>
-        </div>
-        <div>
-          <label class="text-sm font-semibold text-gray-600">บาร์โค้ดสินค้า</label>
-          <div class="grid grid-cols-2 gap-2 mt-1">
-            <input id="product-barcode" placeholder="สแกน/พิมพ์บาร์โค้ดเดิม หรือเว้นว่างไว้" class="w-full p-3 soft-border rounded-xl">
-            <button type="button" onclick="generateBarcode()" class="bg-primary text-white rounded-xl font-semibold">สร้างใหม่</button>
-          </div>
-          <p class="text-xs text-gray-400 mt-1">ถ้าสินค้ามีบาร์โค้ดจากโรงงานอยู่แล้ว ให้สแกนหรือพิมพ์ลงช่องนี้ ไม่ต้องกดสร้างใหม่</p>
-        </div>
-        <input id="product-name" placeholder="ชื่อสินค้า เช่น เสื้อยืด Basic" class="w-full p-3 soft-border rounded-xl">
-        <input id="product-number" placeholder="Number ตั้งต้น เช่น 2026 (ไม่กรอก ระบบออกให้)" class="w-full p-3 soft-border rounded-xl">
-        <div class="grid grid-cols-2 gap-2">
-          <input id="product-type" placeholder="ประเภท เช่น เสื้อ / กางเกง" class="w-full p-3 soft-border rounded-xl">
-          <input id="product-cat" placeholder="หมวดหมู่ เช่น เสื้อยืด / ยีนส์" class="w-full p-3 soft-border rounded-xl">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <select id="product-size" class="w-full p-3 soft-border rounded-xl"><option value="">เลือกไซซ์</option>
-<option value="Free Size">Free Size</option>
-<option value="XS">XS</option>
-<option value="S">S</option>
-<option value="M">M</option>
-<option value="L">L</option>
-<option value="XL">XL</option>
-<option value="XXL">XXL</option>
-<option value="3XL">3XL</option>
-<option value="4XL">4XL</option>
-<option value="5XL">5XL</option>
-<option value="24">24</option>
-<option value="25">25</option>
-<option value="26">26</option>
-<option value="27">27</option>
-<option value="28">28</option>
-<option value="29">29</option>
-<option value="30">30</option>
-<option value="31">31</option>
-<option value="32">32</option>
-<option value="33">33</option>
-<option value="34">34</option>
-<option value="35">35</option>
-<option value="36">36</option>
-<option value="37">37</option>
-<option value="38">38</option>
-<option value="39">39</option>
-<option value="40">40</option>
-<option value="41">41</option>
-<option value="42">42</option>
-<option value="44">44</option>
-<option value="46">46</option>
-<option value="48">48</option>
-<option value="50">50</option>
-<option value="52">52</option>
-<option value="54">54</option>
-<option value="56">56</option>
-<option value="อื่น ๆ">อื่น ๆ</option></select>
-          <input id="product-color" placeholder="สี เช่น ดำ / ขาว / ครีม" class="w-full p-3 soft-border rounded-xl">
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <input id="product-price" type="number" placeholder="ราคาขาย" class="w-full p-3 soft-border rounded-xl">
-          <input id="product-cost" type="number" placeholder="ต้นทุน" class="w-full p-3 soft-border rounded-xl">
-        </div>
-        <input id="product-stock" type="number" placeholder="สต๊อก" class="w-full p-3 soft-border rounded-xl">
-        <input id="product-img" placeholder="ลิงก์รูปสินค้า" class="w-full p-3 soft-border rounded-xl">
-        <div id="single-barcode-preview" class="hidden bg-gray-50 rounded-2xl p-3 text-center">
-          <svg id="single-barcode-svg"></svg>
-        </div>
-        <button class="w-full btn-touch bg-primary text-white rounded-2xl font-bold">บันทึกสินค้า</button>
-      </form>
       <div class="bg-white rounded-3xl card-shadow overflow-hidden">
-        <div class="p-4 flex flex-wrap gap-2 justify-between items-center">
-          <h3 class="text-xl font-bold">รายการสินค้า</h3>
-          <div class="flex flex-wrap gap-2">
-            <button onclick="openReceiveModal()" class="px-4 py-2 rounded-xl bg-primary-soft text-primary font-semibold flex items-center gap-2"><i data-lucide="scan-line" class="w-4 h-4"></i>รับสินค้า</button>
-            <button onclick="printAllBarcodes()" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold flex items-center gap-2"><i data-lucide="printer" class="w-4 h-4"></i>พิมพ์บาร์โค้ดทั้งหมด</button>
+        <div class="p-4 border-b border-gray-100">
+          <div class="flex flex-wrap gap-2 justify-between items-center mb-3">
+            <h3 class="text-xl font-bold">รายการสินค้า</h3>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="openReceiveModal()" class="px-4 py-2 rounded-xl bg-primary-soft text-primary font-semibold flex items-center gap-2"><i data-lucide="scan-line" class="w-4 h-4"></i>รับสินค้า</button>
+              <button onclick="printAllBarcodes()" class="px-4 py-2 rounded-xl bg-primary text-white font-semibold flex items-center gap-2"><i data-lucide="printer" class="w-4 h-4"></i>พิมพ์บาร์โค้ดทั้งหมด</button>
+            </div>
+          </div>
+          <div class="flex gap-2 overflow-x-auto pb-1">
+            ${types.map(type => `
+              <button onclick="setProductManageTypeFilter('${encAttr(type)}' ? decodeURIComponent('${encAttr(type)}') : 'ทั้งหมด')" class="px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap ${productManageTypeFilter===type?'bg-primary text-white':'bg-gray-100 text-gray-600 hover:bg-gray-200'}">${type}</button>
+            `).join('')}
           </div>
         </div>
         <table class="responsive-table w-full text-left">
           <thead class="bg-gray-50 text-gray-500"><tr><th class="p-4">สินค้า</th><th>ประเภท/ไซซ์/สี</th><th>บาร์โค้ด</th><th>ต้นทุน/ขาย</th><th>กำไร/ชิ้น</th><th>สต๊อก</th><th class="text-right p-4">จัดการ</th></tr></thead>
           <tbody>
-            ${db.products.map(p=>`
+            ${productList.length ? productList.map(p=>`
               <tr class="border-t border-gray-100">
-                <td class="p-4"><b>${p.name}</b><br><span class="text-sm text-gray-400">${p.id} | ${p.cat}</span></td>
+                <td class="p-4"><b>${p.name}</b><br><span class="text-sm text-gray-400">${p.id} | ${p.cat || '-'}</span></td>
                 <td>${p.type || '-'}<br><span class="text-sm text-gray-500">ไซซ์ ${p.size || '-'} | สี ${p.color || '-'}</span></td>
                 <td><span class="font-mono text-sm">${p.barcode || '-'}</span></td>
                 <td>${money(p.cost||0)}<br><span class="text-sm text-gray-500">ขาย ${money(p.price)}</span></td><td class="font-bold text-primary">${money((p.price||0)-(p.cost||0))}</td><td>${p.stock}</td>
-                <td class="p-4 text-right">
-                  <button onclick="showBarcode('${p.id}')" class="px-3 py-2 rounded-xl bg-primary-soft text-primary font-semibold">${p.barcode ? "บาร์โค้ด" : "ไม่มีบาร์โค้ด"}</button>
-                  <button onclick="openProductModal('${p.id}')" class="px-3 py-2 rounded-xl bg-gray-100 font-semibold">แก้ไข</button>
-                  <button onclick="deleteProduct('${p.id}')" class="px-3 py-2 rounded-xl bg-red-50 text-red-600 font-semibold">ลบ</button>
+                <td class="p-4 text-right space-x-1">
+                  <button type="button" onclick="showBarcodeEncoded('${encAttr(p.id)}')" class="px-3 py-2 rounded-xl bg-primary-soft text-primary font-semibold">${p.barcode ? "บาร์โค้ด" : "ไม่มีบาร์โค้ด"}</button>
+                  <button type="button" onclick="openProductModalEncoded('${encAttr(p.id)}')" class="px-3 py-2 rounded-xl bg-gray-100 font-semibold">แก้ไข</button>
+                  <button type="button" onclick="deleteProductEncoded('${encAttr(p.id)}')" class="px-3 py-2 rounded-xl bg-red-50 text-red-600 font-semibold">ลบ</button>
                 </td>
-              </tr>`).join('')}
+              </tr>`).join('') : `<tr><td colspan="7" class="p-10 text-center text-gray-400">ไม่พบสินค้าในประเภทนี้</td></tr>`}
           </tbody>
         </table>
       </div>
     </div>`;
+  safeCreateIcons();
 }
 function saveProduct(e){
   e.preventDefault();
@@ -2233,11 +2243,20 @@ function saveProduct(e){
   saveDB(); renderCategories(); renderProducts(); renderAllPages(); showToast('บันทึกสินค้าแล้ว');
 }
 function editProduct(id){ openProductModal(id); }
-function deleteProduct(id){
+async function deleteProduct(id){
   if(!confirm('ลบสินค้านี้หรือไม่')) return;
-  db.products = db.products.filter(p=>p.id!==id);
-  saveDB(); renderCategories(); renderProducts(); renderAllPages();
+  try{
+    showToast('กำลังลบสินค้า...');
+    await callSheetApi('deleteProduct', {productId:id});
+    db.products = db.products.filter(p=>p.id!==id);
+    refreshProductViewsOnly();
+    showToast('ลบสินค้าแล้ว');
+  }catch(err){
+    console.error(err);
+    showToast('ลบสินค้าไม่สำเร็จ');
+  }
 }
+
 
 function stockGroupKey(p){
   return `${p.name||''}||${p.type||''}||${p.cat||''}`;
@@ -2900,18 +2919,15 @@ function normalizeBillForSheetV2(b){
 
 window.__sheetReady = false;
 let initialSheetSyncDone = false;
-async function initialSyncFromSheets(){
+async function initialSyncFromSheets(options={}){
   if(initialSheetSyncDone) return;
   initialSheetSyncDone = true;
   try{
-    const data = await callSheetApi('getAll', {});
+    const data = await callSheetApi('getAllFast', {});
     if(data && data.data){
-      db.products = data.data.products || db.products || [];
-      db.bills = data.data.bills || data.data.sales || db.bills || [];
-      db.returns = data.data.returns || db.returns || [];
-      db.customers = data.data.customers || data.data.members || db.customers || [];
-      db.settings = {...db.settings, ...(data.data.settings || {})};
-      db.settings.sheetApiUrl = db.settings.sheetApiUrl || SHEET_API_URL;
+      db = normalizeLoadedDB({...data.data, heldBills: data.data.heldBills || db.heldBills || []});
+      saveSheetCache(db);
+      saveSheetCache(db);
       saveDB(false);
       applySettings();
       renderCategories();
@@ -2920,11 +2936,11 @@ async function initialSyncFromSheets(){
       renderAllPages();
       updateTodaySales();
       window.__sheetReady = true;
-      showToast('เชื่อม Google Sheets แล้ว');
+      if(!options.background) showToast('เชื่อม Google Sheets แล้ว');
     }
   }catch(err){
     console.error('Initial sheet sync failed', err);
-    showToast('ยังเชื่อม Google Sheets ไม่สำเร็จ');
+    showToast(db.products.length ? 'ใช้ข้อมูลล่าสุดที่เคยโหลดไว้ ระหว่างรอชีต' : 'ยังเชื่อม Google Sheets ไม่สำเร็จ');
   }
 }
 
@@ -2958,7 +2974,7 @@ async function syncFromSheets(){
   try{
     if(!confirm('ดึงข้อมูลจาก Google Sheets มาแทนข้อมูลในเครื่องหรือไม่')) return;
     showToast('กำลังดึงข้อมูลจาก Google Sheets...');
-    const data = await callSheetApi('getAll', {});
+    const data = await callSheetApi('getAllFast', {});
     if(data.data){
       db.products = data.data.products || db.products || [];
       db.bills = data.data.bills || data.data.sales || db.bills || [];
@@ -2967,6 +2983,7 @@ async function syncFromSheets(){
       db.customers = data.data.customers || data.data.members || db.customers || [];
       db.settings = {...db.settings, ...(data.data.settings || {})};
       db.settings.sheetApiUrl = db.settings.sheetApiUrl || SHEET_API_URL;
+      saveSheetCache(db);
       saveDB(false);
       renderCategories();
       renderProducts();
@@ -2984,7 +3001,7 @@ async function syncFromSheets(){
 async function forceReloadFromSheets(){
   try{
     showToast('กำลังดึงข้อมูลจาก Google Sheets...');
-    const data = await callSheetApi('getAll', {});
+    const data = await callSheetApi('getAllFast', {});
     if(data.data){
       db.products = data.data.products || data.data.items || [];
       db.bills = data.data.bills || data.data.sales || [];
@@ -2992,6 +3009,7 @@ async function forceReloadFromSheets(){
       db.heldBills = data.data.heldBills || [];
       db.customers = data.data.customers || data.data.members || [];
       db.settings = {...defaultData.settings, ...(data.data.settings || {}), sheetApiUrl:SHEET_API_URL};
+      saveSheetCache(db);
       saveDB(false);
       applySettings();
       renderCategories();
