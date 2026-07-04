@@ -1968,22 +1968,40 @@ async function saveProductModal(e){
     imageUrl: document.getElementById('pm-img').value.trim()
   };
 
+  // ปิดป๊อปอัพทันทีหลังข้อมูลผ่าน validation เพื่อไม่ให้หน้าจอค้างระหว่างรอ Apps Script
+  closeProductModal();
+
+  // อัปเดตหน้าจอและ cache ชั่วคราวก่อน แล้วค่อยยืนยันกับ Google Sheet
+  const beforeProducts = structuredClone(db.products || []);
   try{
-    showToast('กำลังบันทึกสินค้า...');
+    const localIdx = db.products.findIndex(p=>p.id === originalId || p.id === id);
+    if(localIdx >= 0) db.products[localIdx] = product;
+    else db.products.push(product);
+    if(originalId && originalId !== id){
+      db.products = db.products.filter((p, i) => p.id !== originalId || i === db.products.findIndex(x=>x.id===id));
+    }
+    saveSheetCache(db);
+    saveDB(false);
+    refreshProductViewsOnly();
+    showToast('กำลังบันทึกลง Google Sheet...');
+
     const result = await callSheetApi('createProduct', {product, originalId});
     const savedProduct = result.data || product;
-    const idx = db.products.findIndex(p=>p.id === originalId || p.id === savedProduct.id);
+    const idx = db.products.findIndex(p=>p.id === originalId || p.id === savedProduct.id || p.id === id);
     if(idx >= 0) db.products[idx] = savedProduct;
     else db.products.push(savedProduct);
-    if(originalId && originalId !== savedProduct.id){
-      db.products = db.products.filter((p, i) => p.id !== originalId || i === db.products.findIndex(x=>x.id===savedProduct.id));
-    }
-    closeProductModal();
+    saveSheetCache(db);
+    saveDB(false);
     refreshProductViewsOnly();
     showToast('บันทึกสินค้าแล้ว');
   }catch(err){
     console.error(err);
-    showToast('บันทึกสินค้าไม่สำเร็จ');
+    db.products = beforeProducts;
+    saveSheetCache(db);
+    saveDB(false);
+    refreshProductViewsOnly();
+    showToast('บันทึกสินค้าไม่สำเร็จ ข้อมูลถูกคืนค่าก่อนแก้');
+    openProductModal(originalId || id);
   }
 }
 
