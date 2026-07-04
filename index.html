@@ -1678,13 +1678,18 @@ function slugPart(text, len=4){
     .replace(/[^A-Z0-9ก-๙]/g,'')
     .slice(0,len) || 'ITEM';
 }
+let __barcodeSeq = 0;
 function makeBarcode(){
   const prefix = '24';
-  const num = String(Date.now()).slice(-10);
-  let code = prefix + num;
-  while(db.products.some(p=>String(p.barcode)===code)){
-    code = prefix + String(Date.now() + Math.floor(Math.random()*999)).slice(-10);
-  }
+  __barcodeSeq = (__barcodeSeq + 1) % 1000;
+  let code = '';
+  let tries = 0;
+  do {
+    const nowPart = String(Date.now()).slice(-9);
+    const seqPart = String(__barcodeSeq + tries).padStart(3,'0').slice(-3);
+    code = prefix + nowPart + seqPart;
+    tries++;
+  } while(db.products.some(p=>String(p.barcode)===code) && tries < 50);
   return code;
 }
 function generateBarcode(){
@@ -1985,7 +1990,7 @@ async function saveProductModal(e){
     refreshProductViewsOnly();
     showToast('กำลังบันทึกลง Google Sheet...');
 
-    const result = await callSheetApi('createProduct', {product, originalId});
+    const result = await enqueueProductSave(() => callSheetApi('createProduct', {product, originalId}));
     const savedProduct = result.data || product;
     const idx = db.products.findIndex(p=>p.id === originalId || p.id === savedProduct.id || p.id === id);
     if(idx >= 0) db.products[idx] = savedProduct;
@@ -2962,6 +2967,13 @@ async function initialSyncFromSheets(options={}){
   }
 }
 
+let __productSaveQueue = Promise.resolve();
+
+function enqueueProductSave(task){
+  __productSaveQueue = __productSaveQueue.catch(()=>{}).then(task);
+  return __productSaveQueue;
+}
+
 async function callSheetApi(action, payload={}){
   const url = ((db.settings && db.settings.sheetApiUrl) || SHEET_API_URL || '').trim();
   if(!url){
@@ -2974,7 +2986,10 @@ async function callSheetApi(action, payload={}){
     headers:{'Content-Type':'text/plain;charset=utf-8'},
     body: JSON.stringify({action, payload})
   });
-  const data = await res.json();
+  const text = await res.text();
+  let data;
+  try{ data = JSON.parse(text); }
+  catch(e){ throw new Error('Apps Script ไม่ได้ส่ง JSON กลับมา: ' + text.slice(0,120)); }
   if(!data.ok) throw new Error(data.error || 'Google Sheet error');
   return data;
 }
