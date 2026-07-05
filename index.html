@@ -454,6 +454,11 @@
   body.printing-labels .product-label { border:0.2mm solid #ddd; margin:0; border-radius:0; }
 }
 
+
+/* Modal stacking fix: product edit popup must always stay in front of grouped product/stock panels */
+#product-modal{ z-index:120 !important; }
+#new-product-modal{ z-index:121 !important; }
+#product-modal > div, #new-product-modal > div{ position:relative; z-index:1; }
 </style>
 
 <script>
@@ -786,7 +791,7 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
     </div>
   </div>
 
-  <div id="product-modal" class="hidden fixed inset-0 bg-black/40 z-[88] flex items-center justify-center p-4 no-print">
+  <div id="product-modal" class="hidden fixed inset-0 bg-black/40 z-[120] flex items-center justify-center p-4 no-print">
     <div class="bg-white rounded-3xl p-6 max-w-2xl w-full card-shadow modal-card-mobile">
       <div class="flex items-center justify-between mb-4">
         <h3 id="product-modal-title" class="text-xl font-bold">เพิ่มสินค้า</h3>
@@ -886,7 +891,7 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
     </div>
   </div>
 
-  <div id="new-product-modal" class="hidden fixed inset-0 bg-black/40 z-[95] flex items-center justify-center p-4 no-print">
+  <div id="new-product-modal" class="hidden fixed inset-0 bg-black/40 z-[121] flex items-center justify-center p-4 no-print">
     <div class="bg-white rounded-3xl p-6 max-w-xl w-full card-shadow modal-card-mobile">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-xl font-bold">สินค้าใหม่</h3>
