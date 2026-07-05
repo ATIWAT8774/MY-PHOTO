@@ -608,6 +608,9 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
                   class="w-full pl-12 pr-4 py-4 bg-white soft-border rounded-2xl text-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
               </div>
               <div class="scan-buttons flex gap-2">
+                <button onclick="openMiscSaleModal()" class="btn-touch px-5 bg-amber-500 text-white rounded-2xl hover:bg-amber-600 flex items-center gap-2 font-medium">
+                  <i data-lucide="plus" class="w-5 h-5"></i><span>จิปาถะ</span>
+                </button>
                 <button onclick="focusBarcode()" class="btn-touch px-5 bg-white soft-border rounded-2xl hover:bg-gray-50 flex items-center gap-2 font-medium">
                   <i data-lucide="scan-line" class="w-5 h-5"></i><span>สแกนเนอร์</span>
                 </button>
@@ -813,7 +816,7 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
           <input id="pm-cat" class="p-3 soft-border rounded-xl" placeholder="หมวดหมู่">
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <select id="pm-size" class="p-3 soft-border rounded-xl"><option value="">เลือกไซซ์</option>
+          <select id="pm-size" onchange="onSizeSelectChange('pm-size')" class="p-3 soft-border rounded-xl"><option value="">เลือกไซซ์</option>
 <option value="Free Size">Free Size</option>
 <option value="XS">XS</option>
 <option value="S">S</option>
@@ -851,6 +854,7 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
 <option value="54">54</option>
 <option value="56">56</option>
 <option value="อื่น ๆ">อื่น ๆ</option></select>
+          <input id="pm-size-custom" class="hidden p-3 soft-border rounded-xl md:col-span-2" placeholder="ระบุไซซ์เอง เช่น 2XL, 42.5, อก 44">
           <input id="pm-color" class="p-3 soft-border rounded-xl" placeholder="สี">
         </div>
         <div class="grid grid-cols-3 gap-2">
@@ -906,7 +910,7 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
           <input id="new-cat" class="p-3 soft-border rounded-xl" placeholder="หมวดหมู่">
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <select id="new-size" class="p-3 soft-border rounded-xl"><option value="">เลือกไซซ์</option>
+          <select id="new-size" onchange="onSizeSelectChange('new-size')" class="p-3 soft-border rounded-xl"><option value="">เลือกไซซ์</option>
 <option value="Free Size">Free Size</option>
 <option value="XS">XS</option>
 <option value="S">S</option>
@@ -944,6 +948,7 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
 <option value="54">54</option>
 <option value="56">56</option>
 <option value="อื่น ๆ">อื่น ๆ</option></select>
+          <input id="new-size-custom" class="hidden p-3 soft-border rounded-xl md:col-span-2" placeholder="ระบุไซซ์เอง เช่น 2XL, 42.5, อก 44">
           <input id="new-color" class="p-3 soft-border rounded-xl" placeholder="สี">
         </div>
         <div class="grid grid-cols-3 gap-2">
@@ -953,6 +958,31 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
         </div>
         <input id="new-img" class="w-full p-3 soft-border rounded-xl" placeholder="ลิงก์รูปสินค้า">
         <button class="btn-touch w-full bg-primary text-white rounded-2xl font-bold">บันทึกสินค้าใหม่</button>
+      </form>
+    </div>
+  </div>
+
+
+  <div id="misc-sale-modal" class="hidden fixed inset-0 bg-black/40 z-[96] flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-3xl p-6 max-w-xl w-full card-shadow modal-card-mobile">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-xl font-bold">ขายหมวดจิปาถะ</h3>
+          <p class="text-sm text-gray-500">สำหรับสินค้าที่ขายจริง แต่ไม่ต้องเพิ่มเข้าฐานข้อมูลและไม่ตัดสต๊อก</p>
+        </div>
+        <button onclick="closeMiscSaleModal()" class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center"><i data-lucide="x"></i></button>
+      </div>
+      <form onsubmit="addMiscSaleToCart(event)" class="space-y-3">
+        <input id="misc-sale-name" class="w-full p-4 soft-border rounded-2xl" placeholder="ชื่อสินค้า เช่น เสื้อเคลียร์สต๊อก / ของฝาก" autocomplete="off">
+        <div class="grid grid-cols-2 gap-2">
+          <input id="misc-sale-price" type="number" min="0" step="1" class="p-4 soft-border rounded-2xl" placeholder="ราคา">
+          <input id="misc-sale-qty" type="number" min="1" step="1" class="p-4 soft-border rounded-2xl" placeholder="จำนวน" value="1">
+        </div>
+        <input id="misc-sale-note" class="w-full p-4 soft-border rounded-2xl" placeholder="รายละเอียดเพิ่มเติม/สี/ไซซ์ (ไม่บังคับ)" autocomplete="off">
+        <div class="grid grid-cols-2 gap-2 pt-2">
+          <button type="button" onclick="closeMiscSaleModal()" class="btn-touch bg-gray-100 rounded-2xl font-bold">ยกเลิก</button>
+          <button class="btn-touch bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-bold">เพิ่มลงตะกร้า</button>
+        </div>
       </form>
     </div>
   </div>
@@ -1245,6 +1275,48 @@ function renderProducts(){
 }
 function focusBarcode(){ document.getElementById('search-input').focus(); }
 
+function openMiscSaleModal(){
+  const m = document.getElementById('misc-sale-modal');
+  if(!m) return;
+  document.getElementById('misc-sale-name').value = '';
+  document.getElementById('misc-sale-price').value = '';
+  document.getElementById('misc-sale-qty').value = '1';
+  document.getElementById('misc-sale-note').value = '';
+  m.classList.remove('hidden');
+  setTimeout(()=>document.getElementById('misc-sale-name')?.focus(), 80);
+  safeCreateIcons();
+}
+function closeMiscSaleModal(){
+  document.getElementById('misc-sale-modal')?.classList.add('hidden');
+}
+function addMiscSaleToCart(event){
+  event.preventDefault();
+  const name = (document.getElementById('misc-sale-name')?.value || '').trim();
+  const price = Number(document.getElementById('misc-sale-price')?.value) || 0;
+  const qty = Math.max(1, Number(document.getElementById('misc-sale-qty')?.value) || 1);
+  const note = (document.getElementById('misc-sale-note')?.value || '').trim();
+  if(!name) return showToast('กรอกชื่อสินค้า');
+  if(price <= 0) return showToast('กรอกราคาให้ถูกต้อง');
+  cart.push({
+    id: 'MISC-' + Date.now() + '-' + Math.random().toString(16).slice(2,6),
+    name,
+    type: 'จิปาถะ',
+    cat: 'จิปาถะ',
+    size: note,
+    color: '',
+    barcode: '',
+    price,
+    cost: 0,
+    qty,
+    isMisc: true,
+    noStock: true
+  });
+  closeMiscSaleModal();
+  renderCart();
+  openMobileCart();
+  showToast('เพิ่มสินค้าจิปาถะลงตะกร้าแล้ว');
+}
+
 function addToCart(id){
   const p = db.products.find(x=>x.id===id);
   if(!p || p.stock<=0) return showToast('สินค้าไม่พอขาย');
@@ -1269,7 +1341,7 @@ function renderCart(){
         <div class="flex justify-between gap-3 mb-2">
           <div class="min-w-0">
             <p class="font-semibold truncate">${item.name}</p>
-            <p class="text-sm text-gray-400">${item.size || '-'} / ${item.color || '-'} | ${money(item.price)} x ${item.qty}</p>
+            <p class="text-sm text-gray-400">${item.isMisc ? 'หมวดจิปาถะ' + (item.size ? ' | ' + item.size : '') : ((item.size || '-') + ' / ' + (item.color || '-'))} | ${money(item.price)} x ${item.qty}</p>
           </div>
           <p class="font-bold">${money(item.price*item.qty)}</p>
         </div>
@@ -1293,8 +1365,9 @@ function renderCart(){
 }
 function changeQty(i,d){
   const item = cart[i];
+  if(!item) return;
   const p = db.products.find(x=>x.id===item.id);
-  if(d>0 && item.qty+1 > p.stock) return showToast('จำนวนเกินสต๊อก');
+  if(d>0 && !item.isMisc && p && item.qty+1 > p.stock) return showToast('จำนวนเกินสต๊อก');
   item.qty += d;
   if(item.qty<=0) cart.splice(i,1);
   renderCart();
@@ -1596,6 +1669,7 @@ async function checkout(){
     voided:false
   };
   bill.items.forEach(item => {
+    if(item.isMisc) return;
     const p = db.products.find(x=>x.id===item.id);
     if(p) p.stock -= item.qty;
   });
@@ -1900,18 +1974,40 @@ function renderPrintBarcodes(){
 
 
 
+function sizeCustomInputId(id){ return id + '-custom'; }
+
+function onSizeSelectChange(id){
+  const el = document.getElementById(id);
+  const customInput = document.getElementById(sizeCustomInputId(id));
+  if(!el || !customInput) return;
+  const isOther = el.value === 'อื่น ๆ';
+  customInput.classList.toggle('hidden', !isOther);
+  if(isOther){
+    customInput.focus();
+  }else{
+    customInput.value = '';
+  }
+}
+
 function setSizeSelectValue(id, value){
   const el = document.getElementById(id);
   if(!el) return;
-  const val = value || '';
+  const val = String(value || '').trim();
+  const customInput = document.getElementById(sizeCustomInputId(id));
   const exists = Array.from(el.options).some(o => o.value === val);
   if(val && !exists){
-    const option = document.createElement('option');
-    option.value = val;
-    option.textContent = val;
-    el.appendChild(option);
+    el.value = 'อื่น ๆ';
+    if(customInput){
+      customInput.value = val;
+      customInput.classList.remove('hidden');
+    }
+    return;
   }
   el.value = val;
+  if(customInput){
+    customInput.value = '';
+    customInput.classList.toggle('hidden', el.value !== 'อื่น ๆ');
+  }
 }
 
 function getSelectedSize(id){
@@ -1919,16 +2015,8 @@ function getSelectedSize(id){
   if(!el) return '';
   const value = el.value;
   if(value === 'อื่น ๆ'){
-    const custom = prompt('กรอกไซซ์เอง');
-    if(custom){
-      const option = document.createElement('option');
-      option.value = custom.trim();
-      option.textContent = custom.trim();
-      option.selected = true;
-      el.appendChild(option);
-      return custom.trim();
-    }
-    return '';
+    const customInput = document.getElementById(sizeCustomInputId(id));
+    return (customInput?.value || '').trim();
   }
   return value;
 }
@@ -2177,7 +2265,7 @@ function handleReceiveBarcode(code){
   }
   pendingNewBarcode = cleaned;
   document.getElementById('new-barcode').value = cleaned;
-  ['new-name','new-number','new-type','new-cat','new-size','new-color','new-cost','new-price','new-img'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['new-name','new-number','new-type','new-cat','new-size','new-size-custom','new-color','new-cost','new-price','new-img'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('new-qty').value = 1;
   document.getElementById('new-product-modal').classList.remove('hidden');
   setTimeout(()=>document.getElementById('new-name')?.focus(),100);
