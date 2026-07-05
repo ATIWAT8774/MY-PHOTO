@@ -8,6 +8,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
   
 <script>
@@ -410,32 +411,45 @@
 
 
 
-/* Product label printer */
+/* Product label printer - PK style / Ngamta */
 .label-preview-wrap { background:#f3f4f6; border:1px dashed #d1d5db; border-radius:22px; padding:16px; overflow:auto; }
 .label-sheet { display:flex; flex-wrap:wrap; gap:8px; align-items:flex-start; }
 .product-label {
   width:40mm; height:30mm; background:#fff; color:#111; border:1px solid #e5e7eb; border-radius:6px;
-  padding:2.4mm; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
-  overflow:hidden; break-inside:avoid; page-break-inside:avoid;
+  padding:2mm; display:grid; grid-template-rows:auto 1fr; gap:1mm; overflow:hidden;
+  break-inside:avoid; page-break-inside:avoid; font-family:'Prompt', sans-serif;
 }
-.product-label.size-30x20 { width:30mm; height:20mm; padding:1.8mm; border-radius:4px; }
-.product-label.size-50x30 { width:50mm; height:30mm; }
+.product-label.size-30x20 { width:30mm; height:20mm; padding:1.3mm; border-radius:4px; gap:.5mm; }
+.product-label.size-50x30 { width:50mm; height:30mm; padding:2mm; }
 .product-label.size-60x40 { width:60mm; height:40mm; padding:3mm; }
-.product-label .label-store { font-weight:800; font-size:10px; line-height:1; margin-bottom:1px; }
-.product-label .label-name { font-weight:700; font-size:8px; line-height:1.1; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.product-label .label-price { font-weight:900; font-size:13px; line-height:1.05; }
-.product-label .label-meta { font-size:7px; line-height:1.05; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-.product-label svg { width:100%; max-height:9mm; }
-.product-label.size-30x20 .label-store { font-size:8px; }
-.product-label.size-30x20 .label-name { font-size:6.5px; }
-.product-label.size-30x20 .label-price { font-size:10px; }
-.product-label.size-30x20 .label-meta { font-size:6px; }
-.product-label.size-30x20 svg { max-height:6mm; }
-.product-label.size-60x40 .label-store { font-size:13px; }
-.product-label.size-60x40 .label-name { font-size:10px; }
-.product-label.size-60x40 .label-price { font-size:17px; }
-.product-label.size-60x40 .label-meta { font-size:9px; }
-.product-label.size-60x40 svg { max-height:12mm; }
+.label-brand-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:1mm; min-height:0; }
+.product-label .label-store { font-weight:900; font-size:15px; line-height:.95; letter-spacing:.2px; text-align:left; white-space:nowrap; }
+.product-label .label-size-box { text-align:right; min-width:12mm; }
+.product-label .label-size-title { font-weight:900; font-size:5px; line-height:1; letter-spacing:.2px; }
+.product-label .label-size-value { font-weight:900; font-size:9px; line-height:1.05; border-bottom:.25mm solid #111; padding-bottom:.2mm; }
+.label-body-row{ display:grid; grid-template-columns:1fr auto; align-items:end; gap:1mm; min-height:0; }
+.label-left{ min-width:0; overflow:hidden; }
+.product-label .label-name { font-weight:700; font-size:6px; line-height:1.05; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left; }
+.product-label .label-price { font-weight:900; font-size:12px; line-height:1; color:#dc2626; white-space:nowrap; text-align:right; }
+.product-label .label-code { font-size:5.5px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; letter-spacing:.15px; text-align:left; font-family:monospace; }
+.product-label svg { width:100%; max-height:7mm; display:block; }
+.product-label.size-30x20 .label-store { font-size:10px; }
+.product-label.size-30x20 .label-size-title { font-size:4px; }
+.product-label.size-30x20 .label-size-value { font-size:6px; }
+.product-label.size-30x20 .label-name { font-size:4.5px; }
+.product-label.size-30x20 .label-price { font-size:8px; }
+.product-label.size-30x20 .label-code { font-size:4.2px; }
+.product-label.size-30x20 svg { max-height:5.2mm; }
+.product-label.size-50x30 .label-store { font-size:18px; }
+.product-label.size-50x30 .label-price { font-size:15px; }
+.product-label.size-50x30 svg { max-height:8mm; }
+.product-label.size-60x40 .label-store { font-size:22px; }
+.product-label.size-60x40 .label-size-title { font-size:6px; }
+.product-label.size-60x40 .label-size-value { font-size:12px; }
+.product-label.size-60x40 .label-name { font-size:8px; }
+.product-label.size-60x40 .label-price { font-size:19px; }
+.product-label.size-60x40 .label-code { font-size:7px; }
+.product-label.size-60x40 svg { max-height:11mm; }
 @media print {
   body.printing-labels #print-area { display:block !important; }
   body.printing-labels #print-area, body.printing-labels #print-area * { visibility:visible !important; }
@@ -1046,7 +1060,7 @@ let labelSearchQuery = '';
 let selectedLabelIds = new Set();
 let labelSettings = {
   storeName: 'งามตา SHOP',
-  size: '40x30',
+  size: '30x20',
   copiesMode: 'one',
   customCopies: 1,
   showName: true,
@@ -2287,13 +2301,21 @@ function selectedLabelProductsExpanded(){
 }
 function labelHTML(p, idx=0){
   const barcode = String(p.barcode || p.id || '').trim();
-  const meta = [p.size, p.color && p.color !== '-' ? p.color : ''].filter(Boolean).join(' | ');
+  const sizeText = String(p.size || '').trim() || '-';
+  const colorText = String(p.color || '').trim();
+  const nameText = [p.name || '-', colorText && colorText !== '-' ? colorText : ''].filter(Boolean).join(' / ');
   return `<div class="product-label ${labelSizeClass()}">
-    ${labelSettings.showStore ? `<div class="label-store">${labelSettings.storeName || 'งามตา SHOP'}</div>` : ''}
-    ${labelSettings.showBarcode && barcode ? `<svg class="label-barcode" data-code="${barcode.replace(/"/g,'&quot;')}"></svg><div class="label-meta">${barcode}</div>` : ''}
-    ${labelSettings.showName ? `<div class="label-name">${p.name || '-'}</div>` : ''}
-    ${labelSettings.showPrice ? `<div class="label-price">${Number(p.price||0).toLocaleString('th-TH')} บาท</div>` : ''}
-    ${labelSettings.showSizeColor ? `<div class="label-meta">${meta || '&nbsp;'}</div>` : ''}
+    <div class="label-brand-row">
+      ${labelSettings.showStore ? `<div class="label-store">${labelSettings.storeName || 'งามตา SHOP'}</div>` : '<div></div>'}
+      ${labelSettings.showSizeColor ? `<div class="label-size-box"><div class="label-size-title">ไซซ์</div><div class="label-size-value">${sizeText}</div></div>` : ''}
+    </div>
+    <div class="label-body-row">
+      <div class="label-left">
+        ${labelSettings.showBarcode && barcode ? `<svg class="label-barcode" data-code="${barcode.replace(/"/g,'&quot;')}"></svg><div class="label-code">${barcode}</div>` : `<div class="label-name">ไม่มีบาร์โค้ด</div>`}
+        ${labelSettings.showName ? `<div class="label-name">${nameText}</div>` : ''}
+      </div>
+      ${labelSettings.showPrice ? `<div class="label-price">${Number(p.price||0).toLocaleString('th-TH')} บาท</div>` : ''}
+    </div>
   </div>`;
 }
 function renderBarcodeSvgs(scope=document){
@@ -2301,7 +2323,7 @@ function renderBarcodeSvgs(scope=document){
   scope.querySelectorAll('svg.label-barcode').forEach(svg=>{
     const code = svg.getAttribute('data-code') || '';
     if(!code) return;
-    try{ JsBarcode(svg, code, {format:'CODE128', width:1.25, height:28, displayValue:false, margin:0}); }catch(e){}
+    try{ JsBarcode(svg, code, {format:'CODE128', width:1.05, height:24, displayValue:false, margin:0}); }catch(e){}
   });
 }
 function renderLabelsPreviewOnly(){
@@ -2385,11 +2407,12 @@ function renderLabelsPage(){
             <h3 class="text-xl font-bold">ตัวอย่างป้าย</h3>
             <div class="flex gap-2">
               <button onclick="printProductLabels()" class="px-4 py-2 rounded-xl bg-primary text-white font-bold">พิมพ์/PDF</button>
+              <button onclick="exportNiimbotPDFs()" class="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold">PDF Niimbot ≤10MB</button>
               <button onclick="downloadFirstLabelPNG()" class="px-4 py-2 rounded-xl bg-gray-100 font-bold">PNG ดวงแรก</button>
             </div>
           </div>
           <div id="label-preview" class="label-preview-wrap"></div>
-          <p class="text-xs text-gray-400 mt-3">Niimbot: ใช้ปุ่ม PNG ดวงแรก หรือพิมพ์/PDF แล้วนำไฟล์เข้าแอป Niimbot ได้</p>
+          <p class="text-xs text-gray-400 mt-3">Niimbot B1 Pro: แนะนำใช้ปุ่ม PDF Niimbot ≤10MB เพื่อสร้างไฟล์หลายหน้า ขนาดหน้ากระดาษเท่าป้ายจริง แล้วนำเข้าแอป Niimbot</p>
         </div>
       </div>
     </div>`;
@@ -2430,6 +2453,210 @@ function downloadFirstLabelPNG(){
     img.onerror = ()=>{ tmp.remove(); showToast('สร้าง PNG ไม่สำเร็จ ให้ใช้พิมพ์/PDF แทน'); };
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
   },150);
+}
+
+function getLabelSizeMM(){
+  const [w,h] = String(labelSettings.size || '30x20').replace('×','x').split('x').map(Number);
+  return {w:w||30, h:h||20};
+}
+function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+function canvasBytesFromDataUrl(dataUrl){
+  const comma = dataUrl.indexOf(',');
+  const b64len = comma >= 0 ? dataUrl.length - comma - 1 : dataUrl.length;
+  return Math.ceil(b64len * 3 / 4);
+}
+function makeBarcodeCanvas(code, widthPx, heightPx){
+  const c = document.createElement('canvas');
+  c.width = Math.max(120, Math.floor(widthPx));
+  c.height = Math.max(34, Math.floor(heightPx));
+  try{
+    JsBarcode(c, String(code || ''), {
+      format:'CODE128',
+      width: Math.max(1, c.width / Math.max(80, String(code||'').length * 13)),
+      height: c.height,
+      displayValue:false,
+      margin:0,
+      background:'#ffffff',
+      lineColor:'#111111'
+    });
+  }catch(e){
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,c.width,c.height);
+    ctx.fillStyle = '#111'; ctx.font = '12px sans-serif'; ctx.fillText(String(code||'-'), 4, 18);
+  }
+  return c;
+}
+function drawRoundRect(ctx, x, y, w, h, r){
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function fitText(ctx, text, maxW, startPx, minPx, weight='700'){
+  let size = startPx;
+  ctx.font = `${weight} ${size}px Prompt, Arial, sans-serif`;
+  while(size > minPx && ctx.measureText(text).width > maxW){
+    size -= 1;
+    ctx.font = `${weight} ${size}px Prompt, Arial, sans-serif`;
+  }
+  return size;
+}
+function drawLabelCanvas(product, scale=4){
+  const {w,h} = getLabelSizeMM();
+  const dpi = 96 * scale;
+  const pxW = Math.round(w / 25.4 * dpi);
+  const pxH = Math.round(h / 25.4 * dpi);
+  const c = document.createElement('canvas');
+  c.width = pxW; c.height = pxH;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0,0,pxW,pxH);
+  ctx.strokeStyle = '#e5e7eb';
+  ctx.lineWidth = Math.max(1, scale * .35);
+  ctx.strokeRect(0,0,pxW,pxH);
+
+  const m = Math.round(pxW * 0.055);
+  const top = Math.round(pxH * 0.08);
+  const brand = labelSettings.storeName || 'งามตา SHOP';
+  const code = String(product.barcode || product.id || '').trim();
+  const sizeText = String(product.size || '').trim() || '-';
+  const colorText = String(product.color || '').trim();
+  const nameText = [product.name || '-', colorText && colorText !== '-' ? colorText : ''].filter(Boolean).join(' / ');
+  const priceText = `${Number(product.price||0).toLocaleString('th-TH')} บาท`;
+
+  const sizeBoxW = Math.round(pxW * 0.28);
+  const leftW = pxW - (m*3) - sizeBoxW;
+
+  if(labelSettings.showStore){
+    ctx.fillStyle = '#111827';
+    const fs = fitText(ctx, brand, leftW, Math.round(pxH * 0.18), Math.round(pxH * 0.09), '900');
+    ctx.font = `900 ${fs}px Prompt, Arial, sans-serif`;
+    ctx.textBaseline = 'top';
+    ctx.fillText(brand, m, top);
+  }
+
+  if(labelSettings.showSizeColor){
+    const x = pxW - m - sizeBoxW;
+    ctx.fillStyle = '#111827';
+    ctx.font = `900 ${Math.round(pxH*0.07)}px Prompt, Arial, sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('ไซซ์', pxW-m, top);
+    ctx.font = `900 ${Math.round(pxH*0.13)}px Prompt, Arial, sans-serif`;
+    ctx.fillText(sizeText, pxW-m, top + Math.round(pxH*0.075));
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = Math.max(1, scale);
+    ctx.beginPath();
+    ctx.moveTo(x + Math.round(sizeBoxW*.25), top + Math.round(pxH*.215));
+    ctx.lineTo(pxW-m, top + Math.round(pxH*.215));
+    ctx.stroke();
+    ctx.textAlign = 'left';
+  }
+
+  const bodyTop = Math.round(pxH * 0.31);
+  const priceW = labelSettings.showPrice ? Math.round(pxW * 0.35) : 0;
+  const barcodeW = pxW - (m*3) - priceW;
+  const barcodeH = Math.round(pxH * 0.29);
+  if(labelSettings.showBarcode && code){
+    const bc = makeBarcodeCanvas(code, barcodeW, barcodeH);
+    ctx.drawImage(bc, m, bodyTop, barcodeW, barcodeH);
+    ctx.fillStyle = '#111827';
+    ctx.font = `500 ${Math.round(pxH*0.055)}px monospace`;
+    ctx.textBaseline = 'top';
+    ctx.fillText(code, m, bodyTop + barcodeH + Math.round(pxH*0.018));
+  }
+
+  if(labelSettings.showName){
+    ctx.fillStyle = '#111827';
+    const y = bodyTop + barcodeH + Math.round(pxH*0.095);
+    const fs = fitText(ctx, nameText, barcodeW, Math.round(pxH*0.07), Math.round(pxH*0.045), '700');
+    ctx.font = `700 ${fs}px Prompt, Arial, sans-serif`;
+    ctx.textBaseline = 'top';
+    ctx.fillText(nameText, m, y);
+  }
+
+  if(labelSettings.showPrice){
+    ctx.fillStyle = '#dc2626';
+    const fs = fitText(ctx, priceText, priceW, Math.round(pxH*0.17), Math.round(pxH*0.08), '900');
+    ctx.font = `900 ${fs}px Prompt, Arial, sans-serif`;
+    ctx.textBaseline = 'bottom';
+    ctx.textAlign = 'right';
+    ctx.fillText(priceText, pxW - m, pxH - Math.round(pxH*0.10));
+    ctx.textAlign = 'left';
+  }
+  return c;
+}
+async function ensureJsPDF(){
+  if(window.jspdf?.jsPDF) return true;
+  await wait(500);
+  return !!window.jspdf?.jsPDF;
+}
+async function exportNiimbotPDFs(){
+  const list = selectedLabelProductsExpanded();
+  if(!list.length) return showToast('เลือกสินค้าก่อนสร้าง PDF');
+  const ok = await ensureJsPDF();
+  if(!ok) return showToast('โหลดตัวสร้าง PDF ไม่สำเร็จ เช็กอินเทอร์เน็ตแล้วลองใหม่');
+  if(list.length > 700 && !confirm(`กำลังสร้าง ${list.length} ป้าย อาจใช้เวลานาน ต้องการทำต่อไหม`)) return;
+
+  const oldText = document.getElementById('toast')?.textContent;
+  showToast(`กำลังสร้าง PDF ${list.length} ดวง...`);
+  const { jsPDF } = window.jspdf;
+  const {w,h} = getLabelSizeMM();
+  const maxBytes = 9.2 * 1024 * 1024; // กันเผื่อให้ไฟล์จริงไม่เกิน 10 MB
+  const margin = 0;
+  let part = 1;
+  let made = 0;
+  let currentBytes = 0;
+  let pageCount = 0;
+  let pdf = new jsPDF({orientation:w>h?'landscape':'portrait', unit:'mm', format:[w,h], compress:true});
+  const saved = [];
+
+  async function finishPdf(){
+    if(pageCount <= 0) return;
+    const blob = pdf.output('blob');
+    const filename = `ngamta-labels-${labelSettings.size}-part-${String(part).padStart(2,'0')}.pdf`;
+    downloadBlob(blob, filename);
+    saved.push(`${filename} ${(blob.size/1024/1024).toFixed(1)}MB`);
+    part++;
+    made += pageCount;
+    pdf = new jsPDF({orientation:w>h?'landscape':'portrait', unit:'mm', format:[w,h], compress:true});
+    currentBytes = 0;
+    pageCount = 0;
+    await wait(350);
+  }
+
+  for(let i=0; i<list.length; i++){
+    const canvas = drawLabelCanvas(list[i], 4);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.86);
+    const imgBytes = canvasBytesFromDataUrl(dataUrl) + 6000;
+    if(pageCount > 0 && currentBytes + imgBytes > maxBytes){
+      await finishPdf();
+    }
+    if(pageCount > 0) pdf.addPage([w,h], w>h?'landscape':'portrait');
+    pdf.addImage(dataUrl, 'JPEG', margin, margin, w, h, undefined, 'FAST');
+    currentBytes += imgBytes;
+    pageCount++;
+    if(i % 25 === 0){
+      showToast(`กำลังสร้าง PDF ${i+1}/${list.length} ดวง...`);
+      await wait(20);
+    }
+  }
+  await finishPdf();
+  showToast(`สร้าง PDF สำเร็จ ${saved.length} ไฟล์`);
 }
 
 function productManageTypes(){
