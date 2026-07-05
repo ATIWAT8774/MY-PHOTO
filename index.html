@@ -408,6 +408,45 @@
     }
     i[data-lucide]:empty::before{ content:none; }
 
+
+
+/* Product label printer */
+.label-preview-wrap { background:#f3f4f6; border:1px dashed #d1d5db; border-radius:22px; padding:16px; overflow:auto; }
+.label-sheet { display:flex; flex-wrap:wrap; gap:8px; align-items:flex-start; }
+.product-label {
+  width:40mm; height:30mm; background:#fff; color:#111; border:1px solid #e5e7eb; border-radius:6px;
+  padding:2.4mm; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+  overflow:hidden; break-inside:avoid; page-break-inside:avoid;
+}
+.product-label.size-30x20 { width:30mm; height:20mm; padding:1.8mm; border-radius:4px; }
+.product-label.size-50x30 { width:50mm; height:30mm; }
+.product-label.size-60x40 { width:60mm; height:40mm; padding:3mm; }
+.product-label .label-store { font-weight:800; font-size:10px; line-height:1; margin-bottom:1px; }
+.product-label .label-name { font-weight:700; font-size:8px; line-height:1.1; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.product-label .label-price { font-weight:900; font-size:13px; line-height:1.05; }
+.product-label .label-meta { font-size:7px; line-height:1.05; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.product-label svg { width:100%; max-height:9mm; }
+.product-label.size-30x20 .label-store { font-size:8px; }
+.product-label.size-30x20 .label-name { font-size:6.5px; }
+.product-label.size-30x20 .label-price { font-size:10px; }
+.product-label.size-30x20 .label-meta { font-size:6px; }
+.product-label.size-30x20 svg { max-height:6mm; }
+.product-label.size-60x40 .label-store { font-size:13px; }
+.product-label.size-60x40 .label-name { font-size:10px; }
+.product-label.size-60x40 .label-price { font-size:17px; }
+.product-label.size-60x40 .label-meta { font-size:9px; }
+.product-label.size-60x40 svg { max-height:12mm; }
+@media print {
+  body.printing-labels #print-area { display:block !important; }
+  body.printing-labels #print-area, body.printing-labels #print-area * { visibility:visible !important; }
+  body.printing-labels #print-area {
+    position:absolute; left:0; top:0; width:auto !important; max-width:none !important; padding:0 !important;
+    background:white; color:#111;
+  }
+  body.printing-labels .label-sheet { gap:0; }
+  body.printing-labels .product-label { border:0.2mm solid #ddd; margin:0; border-radius:0; }
+}
+
 </style>
 
 <script>
@@ -492,6 +531,9 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
         </button>
         <button data-page="products" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
           <i data-lucide="package" class="w-5 h-5"></i><span class="sidebar-text">จัดการสินค้า</span>
+        </button>
+        <button data-page="labels" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
+          <i data-lucide="printer" class="w-5 h-5"></i><span class="sidebar-text">พิมพ์ป้ายสินค้า</span>
         </button>
         <button data-page="stock" class="menu-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-gray-600 hover:bg-gray-50 text-left">
           <i data-lucide="archive" class="w-5 h-5"></i><span class="sidebar-text">สต๊อกสินค้า</span>
@@ -684,6 +726,7 @@ window.addEventListener('error', function(e){ console.error('POS error:', e.mess
 
       <section id="page-history" class="page flex-1 overflow-y-auto p-6"></section>
       <section id="page-products" class="page flex-1 overflow-y-auto p-6"></section>
+      <section id="page-labels" class="page flex-1 overflow-y-auto p-6"></section>
       <section id="page-stock" class="page flex-1 overflow-y-auto p-6"></section>
       <section id="page-returns" class="page flex-1 overflow-y-auto p-6"></section>
       <section id="page-reports" class="page flex-1 overflow-y-auto p-6"></section>
@@ -997,6 +1040,22 @@ let discountType = 'percent';
 let paymentMethod = 'cash';
 let selectedCat = 'ทั้งหมด';
 let productManageTypeFilter = 'ทั้งหมด';
+let labelTypeFilter = 'ทั้งหมด';
+let labelCatFilter = 'ทั้งหมด';
+let labelSearchQuery = '';
+let selectedLabelIds = new Set();
+let labelSettings = {
+  storeName: 'งามตา SHOP',
+  size: '40x30',
+  copiesMode: 'one',
+  customCopies: 1,
+  showName: true,
+  showPrice: true,
+  showSizeColor: true,
+  showBarcode: true,
+  showStore: true
+};
+let lastAddedProductIds = JSON.parse(localStorage.getItem('ngamta_last_added_products') || '[]');
 let lastBill = null;
 let html5QrCode = null;
 let scannerRunning = false;
@@ -1610,6 +1669,7 @@ function printReceipt(){
 function renderAllPages(){
   renderHistoryPage();
   renderProductsPage();
+  renderLabelsPage();
   renderStockPage();
   renderReturnsPage();
   renderReportsPage();
@@ -1998,6 +2058,8 @@ async function saveProductModal(e){
     saveSheetCache(db);
     saveDB(false);
     refreshProductViewsOnly();
+    lastAddedProductIds = [savedProduct.id || id];
+    localStorage.setItem('ngamta_last_added_products', JSON.stringify(lastAddedProductIds));
     showToast('บันทึกสินค้าแล้ว');
   }catch(err){
     console.error(err);
@@ -2169,6 +2231,207 @@ function commitReceiveStock(){
   showToast('บันทึกเข้าสต๊อกแล้ว');
 }
 
+
+function labelTypes(){
+  return ['ทั้งหมด', ...new Set(db.products.map(p=>p.type || 'ทั่วไป').filter(Boolean))];
+}
+function labelCats(){
+  return ['ทั้งหมด', ...new Set(db.products.map(p=>p.cat || 'ทั่วไป').filter(Boolean))];
+}
+function labelSizeClass(){ return 'size-' + (labelSettings.size || '40x30').replace('×','x'); }
+function setLabelTypeFilter(v){ labelTypeFilter = v || 'ทั้งหมด'; renderLabelsPage(); }
+function setLabelCatFilter(v){ labelCatFilter = v || 'ทั้งหมด'; renderLabelsPage(); }
+function setLabelSearch(v){ labelSearchQuery = v || ''; renderLabelsPage(); }
+function setLabelSize(v){ labelSettings.size = v || '40x30'; renderLabelsPage(); }
+function setLabelCopiesMode(v){ labelSettings.copiesMode = v || 'one'; renderLabelsPage(); }
+function setLabelCustomCopies(v){ labelSettings.customCopies = Math.max(1, Number(v)||1); renderLabelsPreviewOnly(); }
+function toggleLabelOption(key, checked){ labelSettings[key] = !!checked; renderLabelsPreviewOnly(); }
+function filteredLabelProducts(){
+  const q = (labelSearchQuery || '').trim().toLowerCase();
+  return db.products.filter(p=>{
+    const okType = labelTypeFilter === 'ทั้งหมด' || (p.type || 'ทั่วไป') === labelTypeFilter;
+    const okCat = labelCatFilter === 'ทั้งหมด' || (p.cat || 'ทั่วไป') === labelCatFilter;
+    const hay = [p.id,p.barcode,p.name,p.type,p.cat,p.size,p.color].join(' ').toLowerCase();
+    const okQ = !q || hay.includes(q);
+    return okType && okCat && okQ;
+  });
+}
+function toggleLabelProduct(id, checked){
+  if(checked) selectedLabelIds.add(id); else selectedLabelIds.delete(id);
+  renderLabelsPreviewOnly();
+}
+function selectAllLabelVisible(){ filteredLabelProducts().forEach(p=>selectedLabelIds.add(p.id)); renderLabelsPage(); }
+function clearLabelSelection(){ selectedLabelIds.clear(); renderLabelsPage(); }
+function selectLastAddedProducts(){
+  (lastAddedProductIds || []).forEach(id=>{ if(db.products.some(p=>p.id===id)) selectedLabelIds.add(id); });
+  renderLabelsPage();
+}
+function openLabelPageForProductEncoded(v){
+  const id = decodeURIComponent(v);
+  selectedLabelIds = new Set([id]);
+  switchPage('labels');
+}
+function labelCopiesForProduct(p){
+  if(labelSettings.copiesMode === 'stock') return Math.max(1, Number(p.stock)||1);
+  if(labelSettings.copiesMode === 'custom') return Math.max(1, Number(labelSettings.customCopies)||1);
+  return 1;
+}
+function selectedLabelProductsExpanded(){
+  const selected = db.products.filter(p=>selectedLabelIds.has(p.id));
+  const out = [];
+  selected.forEach(p=>{
+    const copies = labelCopiesForProduct(p);
+    for(let i=0;i<copies;i++) out.push(p);
+  });
+  return out;
+}
+function labelHTML(p, idx=0){
+  const barcode = String(p.barcode || p.id || '').trim();
+  const meta = [p.size, p.color && p.color !== '-' ? p.color : ''].filter(Boolean).join(' | ');
+  return `<div class="product-label ${labelSizeClass()}">
+    ${labelSettings.showStore ? `<div class="label-store">${labelSettings.storeName || 'งามตา SHOP'}</div>` : ''}
+    ${labelSettings.showBarcode && barcode ? `<svg class="label-barcode" data-code="${barcode.replace(/"/g,'&quot;')}"></svg><div class="label-meta">${barcode}</div>` : ''}
+    ${labelSettings.showName ? `<div class="label-name">${p.name || '-'}</div>` : ''}
+    ${labelSettings.showPrice ? `<div class="label-price">${Number(p.price||0).toLocaleString('th-TH')} บาท</div>` : ''}
+    ${labelSettings.showSizeColor ? `<div class="label-meta">${meta || '&nbsp;'}</div>` : ''}
+  </div>`;
+}
+function renderBarcodeSvgs(scope=document){
+  if(!window.JsBarcode) return;
+  scope.querySelectorAll('svg.label-barcode').forEach(svg=>{
+    const code = svg.getAttribute('data-code') || '';
+    if(!code) return;
+    try{ JsBarcode(svg, code, {format:'CODE128', width:1.25, height:28, displayValue:false, margin:0}); }catch(e){}
+  });
+}
+function renderLabelsPreviewOnly(){
+  const list = selectedLabelProductsExpanded();
+  const count = document.getElementById('label-selected-count');
+  if(count) count.textContent = `${selectedLabelIds.size} สินค้า / ${list.length} ดวง`;
+  const box = document.getElementById('label-preview');
+  if(!box) return;
+  if(!list.length){
+    box.innerHTML = `<div class="text-center text-gray-400 p-8">เลือกสินค้าด้านซ้ายเพื่อดูตัวอย่างป้าย</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="label-sheet">${list.slice(0,120).map(labelHTML).join('')}</div>${list.length>120?`<p class="text-xs text-gray-400 mt-3">แสดงตัวอย่าง 120 ดวงแรก จากทั้งหมด ${list.length} ดวง</p>`:''}`;
+  renderBarcodeSvgs(box);
+}
+function renderLabelsPage(){
+  const box = document.getElementById('page-labels');
+  if(!box) return;
+  const list = filteredLabelProducts();
+  const types = labelTypes();
+  const cats = labelCats();
+  if(!types.includes(labelTypeFilter)) labelTypeFilter = 'ทั้งหมด';
+  if(!cats.includes(labelCatFilter)) labelCatFilter = 'ทั้งหมด';
+  box.innerHTML = pageTitle('พิมพ์ป้ายสินค้า','สร้างป้ายบาร์โค้ด งามตา SHOP สำหรับพิมพ์/ส่งออกไปใช้กับ Niimbot') + `
+    <div class="grid grid-cols-1 xl:grid-cols-[1.15fr_.85fr] gap-5">
+      <div class="bg-white rounded-3xl card-shadow p-5">
+        <div class="flex flex-col md:flex-row gap-3 mb-3">
+          <input value="${labelSearchQuery.replace(/"/g,'&quot;')}" oninput="setLabelSearch(this.value)" placeholder="ค้นหาชื่อสินค้า / บาร์โค้ด / ไซซ์ / สี" class="flex-1 p-4 soft-border rounded-2xl">
+          <button onclick="selectAllLabelVisible()" class="px-4 py-3 rounded-2xl bg-primary text-white font-bold">เลือกที่แสดง</button>
+          <button onclick="clearLabelSelection()" class="px-4 py-3 rounded-2xl bg-gray-100 font-bold">ล้าง</button>
+        </div>
+        <div class="flex gap-2 overflow-x-auto pb-2 mb-2">
+          ${types.map(type=>`<button onclick="setLabelTypeFilter(decodeURIComponent('${encAttr(type)}'))" class="px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap ${labelTypeFilter===type?'bg-primary text-white':'bg-gray-100 text-gray-600'}">${type}</button>`).join('')}
+        </div>
+        <div class="flex gap-2 overflow-x-auto pb-3 mb-2">
+          ${cats.map(cat=>`<button onclick="setLabelCatFilter(decodeURIComponent('${encAttr(cat)}'))" class="px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap ${labelCatFilter===cat?'bg-ink text-white':'bg-gray-100 text-gray-600'}">${cat}</button>`).join('')}
+        </div>
+        ${lastAddedProductIds?.length ? `<button onclick="selectLastAddedProducts()" class="mb-3 px-4 py-2 rounded-xl bg-amber-50 text-amber-700 font-bold">พิมพ์ป้ายสินค้าที่เพิ่มล่าสุด (${lastAddedProductIds.length} รายการ)</button>` : ''}
+        <div class="max-h-[62vh] overflow-auto border rounded-2xl">
+          <table class="responsive-table w-full text-left">
+            <thead class="bg-gray-50 text-gray-500"><tr><th class="p-3">เลือก</th><th>สินค้า</th><th>ประเภท</th><th>ราคา</th><th>สต๊อก</th></tr></thead>
+            <tbody>
+              ${list.length ? list.map(p=>`<tr class="border-t border-gray-100">
+                <td class="p-3"><input type="checkbox" ${selectedLabelIds.has(p.id)?'checked':''} onchange="toggleLabelProduct(decodeURIComponent('${encAttr(p.id)}'), this.checked)" class="w-5 h-5 accent-green-600"></td>
+                <td><b>${p.name}</b><br><span class="text-xs text-gray-400 font-mono">${p.barcode || p.id}</span><br><span class="text-xs text-gray-500">ไซซ์ ${p.size || '-'} | สี ${p.color || '-'}</span></td>
+                <td>${p.type || '-'}<br><span class="text-xs text-gray-400">${p.cat || '-'}</span></td>
+                <td class="font-bold text-primary">${money(p.price||0)}</td>
+                <td>${p.stock || 0}</td>
+              </tr>`).join('') : `<tr><td colspan="5" class="p-8 text-center text-gray-400">ไม่พบสินค้า</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="space-y-5">
+        <div class="bg-white rounded-3xl card-shadow p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xl font-bold">ตั้งค่าป้าย</h3>
+            <span id="label-selected-count" class="text-sm text-gray-500"></span>
+          </div>
+          <label class="text-sm font-semibold">ชื่อร้าน</label>
+          <input value="${labelSettings.storeName}" oninput="labelSettings.storeName=this.value; renderLabelsPreviewOnly()" class="w-full p-3 soft-border rounded-xl mb-3" placeholder="งามตา SHOP">
+          <label class="text-sm font-semibold">ขนาดป้าย</label>
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            ${['30x20','40x30','50x30','60x40'].map(sz=>`<button onclick="setLabelSize('${sz}')" class="py-2 rounded-xl font-bold ${labelSettings.size===sz?'bg-primary text-white':'bg-gray-100 text-gray-600'}">${sz} mm</button>`).join('')}
+          </div>
+          <label class="text-sm font-semibold">จำนวนป้ายต่อสินค้า</label>
+          <div class="grid grid-cols-3 gap-2 mb-3">
+            <button onclick="setLabelCopiesMode('one')" class="py-2 rounded-xl font-bold ${labelSettings.copiesMode==='one'?'bg-primary text-white':'bg-gray-100 text-gray-600'}">1 ดวง</button>
+            <button onclick="setLabelCopiesMode('stock')" class="py-2 rounded-xl font-bold ${labelSettings.copiesMode==='stock'?'bg-primary text-white':'bg-gray-100 text-gray-600'}">ตามสต๊อก</button>
+            <button onclick="setLabelCopiesMode('custom')" class="py-2 rounded-xl font-bold ${labelSettings.copiesMode==='custom'?'bg-primary text-white':'bg-gray-100 text-gray-600'}">กำหนดเอง</button>
+          </div>
+          ${labelSettings.copiesMode==='custom'?`<input type="number" min="1" value="${labelSettings.customCopies}" oninput="setLabelCustomCopies(this.value)" class="w-full p-3 soft-border rounded-xl mb-3" placeholder="จำนวนดวงต่อสินค้า">`:''}
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            ${[
+              ['showStore','ชื่อร้าน'],['showBarcode','บาร์โค้ด'],['showName','ชื่อสินค้า'],['showPrice','ราคา'],['showSizeColor','ไซซ์/สี']
+            ].map(([key,label])=>`<label class="flex items-center gap-2 p-3 rounded-xl bg-gray-50"><input type="checkbox" ${labelSettings[key]?'checked':''} onchange="toggleLabelOption('${key}', this.checked)" class="accent-green-600">${label}</label>`).join('')}
+          </div>
+        </div>
+        <div class="bg-white rounded-3xl card-shadow p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xl font-bold">ตัวอย่างป้าย</h3>
+            <div class="flex gap-2">
+              <button onclick="printProductLabels()" class="px-4 py-2 rounded-xl bg-primary text-white font-bold">พิมพ์/PDF</button>
+              <button onclick="downloadFirstLabelPNG()" class="px-4 py-2 rounded-xl bg-gray-100 font-bold">PNG ดวงแรก</button>
+            </div>
+          </div>
+          <div id="label-preview" class="label-preview-wrap"></div>
+          <p class="text-xs text-gray-400 mt-3">Niimbot: ใช้ปุ่ม PNG ดวงแรก หรือพิมพ์/PDF แล้วนำไฟล์เข้าแอป Niimbot ได้</p>
+        </div>
+      </div>
+    </div>`;
+  renderLabelsPreviewOnly();
+  safeCreateIcons();
+}
+function printProductLabels(){
+  const list = selectedLabelProductsExpanded();
+  if(!list.length) return showToast('เลือกสินค้าก่อนพิมพ์ป้าย');
+  const area = document.getElementById('print-area');
+  area.innerHTML = `<div class="label-sheet">${list.map(labelHTML).join('')}</div>`;
+  renderBarcodeSvgs(area);
+  document.body.classList.add('printing','printing-labels');
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>document.body.classList.remove('printing','printing-labels'),500);
+  },250);
+}
+function downloadFirstLabelPNG(){
+  const list = selectedLabelProductsExpanded();
+  if(!list.length) return showToast('เลือกสินค้าก่อน');
+  const tmp = document.createElement('div');
+  tmp.style.position='fixed'; tmp.style.left='-9999px'; tmp.style.top='0'; tmp.style.background='#fff';
+  tmp.innerHTML = labelHTML(list[0]);
+  document.body.appendChild(tmp);
+  renderBarcodeSvgs(tmp);
+  setTimeout(()=>{
+    const label = tmp.querySelector('.product-label');
+    const rect = label.getBoundingClientRect();
+    const scale = 4;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(rect.width*scale); canvas.height = Math.ceil(rect.height*scale);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale,scale); ctx.fillStyle='#fff'; ctx.fillRect(0,0,rect.width,rect.height);
+    const svgData = `<svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}"><foreignObject width="100%" height="100%">${new XMLSerializer().serializeToString(label)}</foreignObject></svg>`;
+    const img = new Image();
+    img.onload = ()=>{ ctx.drawImage(img,0,0); const a=document.createElement('a'); a.download=`label-${list[0].barcode||list[0].id}.png`; a.href=canvas.toDataURL('image/png'); a.click(); tmp.remove(); };
+    img.onerror = ()=>{ tmp.remove(); showToast('สร้าง PNG ไม่สำเร็จ ให้ใช้พิมพ์/PDF แทน'); };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
+  },150);
+}
+
 function productManageTypes(){
   return ['ทั้งหมด', ...new Set(db.products.map(p=>p.type || 'ทั่วไป').filter(Boolean))];
 }
@@ -2221,6 +2484,7 @@ function renderProductsPage(){
                 <td>${money(p.cost||0)}<br><span class="text-sm text-gray-500">ขาย ${money(p.price)}</span></td><td class="font-bold text-primary">${money((p.price||0)-(p.cost||0))}</td><td>${p.stock}</td>
                 <td class="p-4 text-right space-x-1">
                   <button type="button" onclick="showBarcodeEncoded('${encAttr(p.id)}')" class="px-3 py-2 rounded-xl bg-primary-soft text-primary font-semibold">${p.barcode ? "บาร์โค้ด" : "ไม่มีบาร์โค้ด"}</button>
+                  <button type="button" onclick="openLabelPageForProductEncoded('${encAttr(p.id)}')" class="px-3 py-2 rounded-xl bg-amber-50 text-amber-700 font-semibold">พิมพ์ป้าย</button>
                   <button type="button" onclick="openProductModalEncoded('${encAttr(p.id)}')" class="px-3 py-2 rounded-xl bg-gray-100 font-semibold">แก้ไข</button>
                   <button type="button" onclick="deleteProductEncoded('${encAttr(p.id)}')" class="px-3 py-2 rounded-xl bg-red-50 text-red-600 font-semibold">ลบ</button>
                 </td>
