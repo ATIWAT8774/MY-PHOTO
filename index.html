@@ -411,45 +411,38 @@
 
 
 
-/* Product label printer - PK style / Ngamta */
+/* Product label printer - Ngamta compact layout */
 .label-preview-wrap { background:#f3f4f6; border:1px dashed #d1d5db; border-radius:22px; padding:16px; overflow:auto; }
 .label-sheet { display:flex; flex-wrap:wrap; gap:8px; align-items:flex-start; }
 .product-label {
   width:40mm; height:30mm; background:#fff; color:#111; border:1px solid #e5e7eb; border-radius:6px;
-  padding:2mm; display:grid; grid-template-rows:auto 1fr; gap:1mm; overflow:hidden;
+  padding:2mm; display:grid; grid-template-rows:auto auto 1fr; gap:1mm; overflow:hidden;
   break-inside:avoid; page-break-inside:avoid; font-family:'Prompt', sans-serif;
 }
-.product-label.size-30x20 { width:30mm; height:20mm; padding:1.3mm; border-radius:4px; gap:.5mm; }
+.product-label.size-30x20 { width:30mm; height:20mm; padding:1.2mm; border-radius:4px; gap:.5mm; }
 .product-label.size-50x30 { width:50mm; height:30mm; padding:2mm; }
-.product-label.size-60x40 { width:60mm; height:40mm; padding:3mm; }
-.label-brand-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:1mm; min-height:0; }
-.product-label .label-store { font-weight:900; font-size:15px; line-height:.95; letter-spacing:.2px; text-align:left; white-space:nowrap; }
-.product-label .label-size-box { text-align:right; min-width:12mm; }
-.product-label .label-size-title { font-weight:900; font-size:5px; line-height:1; letter-spacing:.2px; }
-.product-label .label-size-value { font-weight:900; font-size:9px; line-height:1.05; border-bottom:.25mm solid #111; padding-bottom:.2mm; }
-.label-body-row{ display:grid; grid-template-columns:1fr auto; align-items:end; gap:1mm; min-height:0; }
-.label-left{ min-width:0; overflow:hidden; }
-.product-label .label-name { font-weight:700; font-size:6px; line-height:1.05; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left; }
-.product-label .label-price { font-weight:900; font-size:12px; line-height:1; color:#dc2626; white-space:nowrap; text-align:right; }
-.product-label .label-code { font-size:5.5px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; letter-spacing:.15px; text-align:left; font-family:monospace; }
-.product-label svg { width:100%; max-height:7mm; display:block; }
-.product-label.size-30x20 .label-store { font-size:10px; }
-.product-label.size-30x20 .label-size-title { font-size:4px; }
-.product-label.size-30x20 .label-size-value { font-size:6px; }
-.product-label.size-30x20 .label-name { font-size:4.5px; }
-.product-label.size-30x20 .label-price { font-size:8px; }
-.product-label.size-30x20 .label-code { font-size:4.2px; }
-.product-label.size-30x20 svg { max-height:5.2mm; }
-.product-label.size-50x30 .label-store { font-size:18px; }
-.product-label.size-50x30 .label-price { font-size:15px; }
-.product-label.size-50x30 svg { max-height:8mm; }
-.product-label.size-60x40 .label-store { font-size:22px; }
-.product-label.size-60x40 .label-size-title { font-size:6px; }
-.product-label.size-60x40 .label-size-value { font-size:12px; }
-.product-label.size-60x40 .label-name { font-size:8px; }
-.product-label.size-60x40 .label-price { font-size:19px; }
-.product-label.size-60x40 .label-code { font-size:7px; }
-.product-label.size-60x40 svg { max-height:11mm; }
+.product-label.size-60x40 { width:60mm; height:40mm; padding:2.5mm; }
+.product-label .label-store { font-weight:900; font-size:13px; line-height:1; letter-spacing:.15px; text-align:center; white-space:nowrap; }
+.product-label .label-name-size { font-weight:800; font-size:6.5px; line-height:1.05; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.product-label .label-bottom-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1.2mm; align-items:end; min-height:0; }
+.product-label .label-barcode-wrap { min-width:0; align-self:end; }
+.product-label svg { width:100%; max-height:9mm; display:block; }
+.product-label .label-code { font-size:5px; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; letter-spacing:.1px; text-align:center; font-family:monospace; margin-top:.3mm; }
+.product-label .label-price { font-weight:900; font-size:11px; line-height:1; color:#dc2626; white-space:nowrap; text-align:right; align-self:end; padding-bottom:.5mm; }
+.product-label.size-30x20 .label-store { font-size:8.5px; }
+.product-label.size-30x20 .label-name-size { font-size:4.4px; }
+.product-label.size-30x20 svg { max-height:5.8mm; }
+.product-label.size-30x20 .label-code { font-size:3.5px; margin-top:.15mm; }
+.product-label.size-30x20 .label-price { font-size:6.6px; }
+.product-label.size-50x30 .label-store { font-size:16px; }
+.product-label.size-50x30 .label-name-size { font-size:7.5px; }
+.product-label.size-50x30 svg { max-height:9.5mm; }
+.product-label.size-50x30 .label-price { font-size:13px; }
+.product-label.size-60x40 .label-store { font-size:20px; }
+.product-label.size-60x40 .label-name-size { font-size:9px; }
+.product-label.size-60x40 svg { max-height:13mm; }
+.product-label.size-60x40 .label-code { font-size:6px; }
+.product-label.size-60x40 .label-price { font-size:17px; }
 @media print {
   body.printing-labels #print-area { display:block !important; }
   body.printing-labels #print-area, body.printing-labels #print-area * { visibility:visible !important; }
@@ -2302,17 +2295,13 @@ function selectedLabelProductsExpanded(){
 function labelHTML(p, idx=0){
   const barcode = String(p.barcode || p.id || '').trim();
   const sizeText = String(p.size || '').trim() || '-';
-  const colorText = String(p.color || '').trim();
-  const nameText = [p.name || '-', colorText && colorText !== '-' ? colorText : ''].filter(Boolean).join(' / ');
+  const nameText = `${p.name || '-'}${labelSettings.showSizeColor ? ' | ' + sizeText : ''}`;
   return `<div class="product-label ${labelSizeClass()}">
-    <div class="label-brand-row">
-      ${labelSettings.showStore ? `<div class="label-store">${labelSettings.storeName || 'งามตา SHOP'}</div>` : '<div></div>'}
-      ${labelSettings.showSizeColor ? `<div class="label-size-box"><div class="label-size-title">ไซซ์</div><div class="label-size-value">${sizeText}</div></div>` : ''}
-    </div>
-    <div class="label-body-row">
-      <div class="label-left">
-        ${labelSettings.showBarcode && barcode ? `<svg class="label-barcode" data-code="${barcode.replace(/"/g,'&quot;')}"></svg><div class="label-code">${barcode}</div>` : `<div class="label-name">ไม่มีบาร์โค้ด</div>`}
-        ${labelSettings.showName ? `<div class="label-name">${nameText}</div>` : ''}
+    ${labelSettings.showStore ? `<div class="label-store">${labelSettings.storeName || 'งามตา SHOP'}</div>` : '<div></div>'}
+    ${labelSettings.showName ? `<div class="label-name-size" title="${nameText.replace(/"/g,'&quot;')}">${nameText}</div>` : '<div></div>'}
+    <div class="label-bottom-row">
+      <div class="label-barcode-wrap">
+        ${labelSettings.showBarcode && barcode ? `<svg class="label-barcode" data-code="${barcode.replace(/"/g,'&quot;')}"></svg><div class="label-code">${barcode}</div>` : `<div class="label-code">ไม่มีบาร์โค้ด</div>`}
       </div>
       ${labelSettings.showPrice ? `<div class="label-price">${Number(p.price||0).toLocaleString('th-TH')} บาท</div>` : ''}
     </div>
@@ -2530,73 +2519,63 @@ function drawLabelCanvas(product, scale=4){
   ctx.strokeRect(0,0,pxW,pxH);
 
   const m = Math.round(pxW * 0.055);
-  const top = Math.round(pxH * 0.08);
   const brand = labelSettings.storeName || 'งามตา SHOP';
   const code = String(product.barcode || product.id || '').trim();
   const sizeText = String(product.size || '').trim() || '-';
-  const colorText = String(product.color || '').trim();
-  const nameText = [product.name || '-', colorText && colorText !== '-' ? colorText : ''].filter(Boolean).join(' / ');
+  const nameSizeText = `${product.name || '-'}${labelSettings.showSizeColor ? ' | ' + sizeText : ''}`;
   const priceText = `${Number(product.price||0).toLocaleString('th-TH')} บาท`;
 
-  const sizeBoxW = Math.round(pxW * 0.28);
-  const leftW = pxW - (m*3) - sizeBoxW;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
 
+  let y = Math.round(pxH * 0.07);
   if(labelSettings.showStore){
     ctx.fillStyle = '#111827';
-    const fs = fitText(ctx, brand, leftW, Math.round(pxH * 0.18), Math.round(pxH * 0.09), '900');
+    const fs = fitText(ctx, brand, pxW - m*2, Math.round(pxH * 0.17), Math.round(pxH * 0.08), '900');
     ctx.font = `900 ${fs}px Prompt, Arial, sans-serif`;
-    ctx.textBaseline = 'top';
-    ctx.fillText(brand, m, top);
-  }
-
-  if(labelSettings.showSizeColor){
-    const x = pxW - m - sizeBoxW;
-    ctx.fillStyle = '#111827';
-    ctx.font = `900 ${Math.round(pxH*0.07)}px Prompt, Arial, sans-serif`;
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'top';
-    ctx.fillText('ไซซ์', pxW-m, top);
-    ctx.font = `900 ${Math.round(pxH*0.13)}px Prompt, Arial, sans-serif`;
-    ctx.fillText(sizeText, pxW-m, top + Math.round(pxH*0.075));
-    ctx.strokeStyle = '#111827';
-    ctx.lineWidth = Math.max(1, scale);
-    ctx.beginPath();
-    ctx.moveTo(x + Math.round(sizeBoxW*.25), top + Math.round(pxH*.215));
-    ctx.lineTo(pxW-m, top + Math.round(pxH*.215));
-    ctx.stroke();
-    ctx.textAlign = 'left';
-  }
-
-  const bodyTop = Math.round(pxH * 0.31);
-  const priceW = labelSettings.showPrice ? Math.round(pxW * 0.35) : 0;
-  const barcodeW = pxW - (m*3) - priceW;
-  const barcodeH = Math.round(pxH * 0.29);
-  if(labelSettings.showBarcode && code){
-    const bc = makeBarcodeCanvas(code, barcodeW, barcodeH);
-    ctx.drawImage(bc, m, bodyTop, barcodeW, barcodeH);
-    ctx.fillStyle = '#111827';
-    ctx.font = `500 ${Math.round(pxH*0.055)}px monospace`;
-    ctx.textBaseline = 'top';
-    ctx.fillText(code, m, bodyTop + barcodeH + Math.round(pxH*0.018));
+    ctx.fillText(brand, pxW/2, y);
+    y += Math.round(fs * 1.13);
   }
 
   if(labelSettings.showName){
+    y += Math.round(pxH * 0.035);
     ctx.fillStyle = '#111827';
-    const y = bodyTop + barcodeH + Math.round(pxH*0.095);
-    const fs = fitText(ctx, nameText, barcodeW, Math.round(pxH*0.07), Math.round(pxH*0.045), '700');
-    ctx.font = `700 ${fs}px Prompt, Arial, sans-serif`;
+    const fs = fitText(ctx, nameSizeText, pxW - m*2, Math.round(pxH * 0.085), Math.round(pxH * 0.045), '800');
+    ctx.font = `800 ${fs}px Prompt, Arial, sans-serif`;
+    ctx.fillText(nameSizeText, pxW/2, y);
+    y += Math.round(fs * 1.15);
+  }
+
+  const bottomPad = Math.round(pxH * 0.08);
+  const codeTextH = Math.round(pxH * 0.07);
+  const priceW = labelSettings.showPrice ? Math.round(pxW * 0.31) : 0;
+  const gap = Math.round(pxW * 0.035);
+  const barcodeX = m;
+  const barcodeW = pxW - (m*2) - priceW - (priceW ? gap : 0);
+  const barcodeH = Math.max(Math.round(pxH * 0.22), Math.round(pxH - y - bottomPad - codeTextH));
+  const barcodeY = Math.max(y + Math.round(pxH*0.03), pxH - bottomPad - codeTextH - barcodeH);
+
+  if(labelSettings.showBarcode && code){
+    const bc = makeBarcodeCanvas(code, barcodeW, barcodeH);
+    ctx.drawImage(bc, barcodeX, barcodeY, barcodeW, barcodeH);
+    ctx.fillStyle = '#111827';
+    ctx.font = `500 ${Math.max(8, Math.round(pxH*0.048))}px monospace`;
     ctx.textBaseline = 'top';
-    ctx.fillText(nameText, m, y);
+    ctx.textAlign = 'center';
+    ctx.fillText(code, barcodeX + barcodeW/2, barcodeY + barcodeH + Math.round(pxH*0.012));
+  }else{
+    ctx.fillStyle = '#111827';
+    ctx.font = `700 ${Math.round(pxH*0.06)}px Prompt, Arial, sans-serif`;
+    ctx.fillText('ไม่มีบาร์โค้ด', barcodeX + barcodeW/2, barcodeY + barcodeH/2);
   }
 
   if(labelSettings.showPrice){
     ctx.fillStyle = '#dc2626';
-    const fs = fitText(ctx, priceText, priceW, Math.round(pxH*0.17), Math.round(pxH*0.08), '900');
+    const fs = fitText(ctx, priceText, priceW, Math.round(pxH*0.13), Math.round(pxH*0.065), '900');
     ctx.font = `900 ${fs}px Prompt, Arial, sans-serif`;
     ctx.textBaseline = 'bottom';
     ctx.textAlign = 'right';
-    ctx.fillText(priceText, pxW - m, pxH - Math.round(pxH*0.10));
-    ctx.textAlign = 'left';
+    ctx.fillText(priceText, pxW - m, pxH - bottomPad);
   }
   return c;
 }
